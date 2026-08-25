@@ -62,7 +62,7 @@
   .console-box { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 16px; font-family: var(--font-code); font-size: 13px; color: var(--text-main); white-space: pre-wrap; min-height: 100px; }
 
   /* Flowchart container */
-  .mermaid-container { background: white; border-radius: 8px; padding: 20px; text-align: center; overflow: auto; min-height: 300px; }
+  .mermaid-container { background: white; border-radius: 8px; padding: 20px; text-align: center; min-height: 300px; display: flex; justify-content: center; align-items: flex-start;}
 
   /* Trace Timeline */
   .trace-step { display: flex; margin-bottom: 20px; position: relative; }
@@ -145,12 +145,12 @@ class SinglyLinkedList:
         return res
 
 if __name__ == "__main__":
-    # Real Inputs are defined right here in the code!
+    # Real execution block - the tracer will follow this step-by-step
     sll = SinglyLinkedList()
     sll.insert_head(20)
     sll.insert_head(10)
     sll.insert_tail(30)
-    print("Initial list:", sll.to_list())
+    print("Initial:", sll.to_list())
     sll.delete_value(20)
     print("After Deleting 20:", sll.to_list())</textarea>
     </div>
@@ -197,17 +197,21 @@ if __name__ == "__main__":
   let pyodide = null;
 
   async function loadEngine() {
-    document.getElementById('btn-run').innerText = "⏳ Loading Python...";
+    document.getElementById('btn-run').innerText = "⏳ Loading Python Engine...";
     document.getElementById('btn-run').disabled = true;
-    pyodide = await loadPyodide();
-    pyodideReady = true;
-    document.getElementById('btn-run').innerText = "▶ Run Code";
-    document.getElementById('btn-run').disabled = false;
+    try {
+      pyodide = await loadPyodide();
+      pyodideReady = true;
+      document.getElementById('btn-run').innerText = "▶ Run Code";
+      document.getElementById('btn-run').disabled = false;
+    } catch(err) {
+      document.getElementById('btn-run').innerText = "Engine Failed";
+      console.error(err);
+    }
   }
   loadEngine();
 
   // Python Script to inject for tracing
-  // It records lines, functions, local variables, and captures print() output
   const tracerScript = `
 import sys
 import json
@@ -215,31 +219,42 @@ import io
 import traceback
 
 def __serialize_obj(obj, depth=0):
-    if depth > 2: return "..."
+    # Cap recursion depth at 1 to prevent circular linked list crashes
+    if depth > 1: return "..."
+    
     if isinstance(obj, (int, float, str, bool, type(None))): return repr(obj)
     if isinstance(obj, list): return "[" + ", ".join(__serialize_obj(i, depth+1) for i in obj) + "]"
-    if isinstance(obj, dict): return "{" + ", ".join(f"{repr(k)}:{__serialize_obj(v, depth+1)}" for k,v in obj.items()) + "}"
+    
+    # Safely extract class attributes (like Node.val and Node.next)
     if hasattr(obj, '__dict__'):
-        attrs = {k: __serialize_obj(v, depth+1) for k, v in obj.__dict__.items() if not k.startswith('_')}
-        return f"<{type(obj).__name__} {attrs}>"
-    return repr(obj)
+        attrs = []
+        for k, v in obj.__dict__.items():
+            if not k.startswith('_'):
+                attrs.append(f"{k}={__serialize_obj(v, depth+1)}")
+        return f"<{type(obj).__name__} {', '.join(attrs)}>"
+        
+    return f"<{type(obj).__name__}>"
 
 def run_and_trace(code_str):
     trace_log = []
     
-    # Capture print statements
+    # Capture print() statements
     captured_out = io.StringIO()
     old_stdout = sys.stdout
     sys.stdout = captured_out
     
     def tracer(frame, event, arg):
-        # Only trace the user's code string, ignore internal python files
-        if frame.f_code.co_filename == "<string>" and event in ['line', 'call']:
-            locs = {k: __serialize_obj(v) for k, v in frame.f_locals.items() if not k.startswith('__') and type(v).__name__ not in ('module', 'function', 'type')}
+        # Only trace the actual executed lines in the user code
+        if frame.f_code.co_filename == "<string>" and event == 'line':
+            locs = {}
+            for k, v in frame.f_locals.items():
+                # Ignore modules and functions to keep output clean
+                if not k.startswith('__') and type(v).__name__ not in ('module', 'function', 'type'):
+                    locs[k] = __serialize_obj(v)
+                    
             trace_log.append({
                 "line": frame.f_lineno,
                 "func": frame.f_code.co_name,
-                "event": event,
                 "locals": locs
             })
         return tracer
@@ -247,7 +262,8 @@ def run_and_trace(code_str):
     error_msg = None
     try:
         sys.settrace(tracer)
-        exec(code_str, {})
+        # CRITICAL FIX: Executing with __name__ == "__main__" ensures the testing block actually runs!
+        exec(code_str, {"__name__": "__main__"})
         sys.settrace(None)
     except Exception as e:
         sys.settrace(None)
@@ -266,7 +282,6 @@ def run_and_trace(code_str):
     if (!pyodideReady) return;
     
     const userCode = document.getElementById('code-input').value;
-    // FIX: Using regex /\r?\n/ to split lines handles both Windows (\r\n) and Mac/Linux (\n) formatting properly.
     const codeLines = userCode.split(/\r?\n/);
     
     document.getElementById('btn-run').innerText = "Running...";
@@ -279,10 +294,10 @@ def run_and_trace(code_str):
       
       renderTrace(result.trace, codeLines);
       renderConsole(result.stdout, result.error);
-      renderFlowchart(result.trace);
+      renderFlowchart(result.trace, codeLines);
       
     } catch (e) {
-      renderConsole("", str(e));
+      renderConsole("", e.message);
     }
     
     document.getElementById('btn-run').innerText = "▶ Run Code";
@@ -295,7 +310,7 @@ def run_and_trace(code_str):
   function renderConsole(stdout, error) {
     let html = `<div class="console-box">${escapeHTML(stdout) || 'No print output.'}</div>`;
     if (error) {
-      html += `<div class="console-box error-text" style="margin-top:10px;">${escapeHTML(error)}</div>`;
+      html += `<div class="console-box error-text" style="margin-top:10px;"><strong>Runtime Error:</strong><br>${escapeHTML(error)}</div>`;
     }
     document.getElementById('console').innerHTML = html;
   }
@@ -307,12 +322,8 @@ def run_and_trace(code_str):
     }
 
     let html = '';
-    // Filter out 'call' events for the line-by-line view to avoid clutter
-    let stepCount = 1;
     
-    trace.forEach(step => {
-      if(step.event !== 'line') return;
-      
+    trace.forEach((step, idx) => {
       const sourceLine = codeLines[step.line - 1] ? codeLines[step.line - 1].trim() : '(Line missing)';
       
       let locsHtml = '';
@@ -326,7 +337,7 @@ def run_and_trace(code_str):
 
       html += `
         <div class="trace-step">
-          <div class="step-num">${stepCount++}</div>
+          <div class="step-num">${idx + 1}</div>
           <div class="step-box">
             <div class="step-code">
               <span>${escapeHTML(sourceLine)}</span>
@@ -341,41 +352,50 @@ def run_and_trace(code_str):
     document.getElementById('trace').innerHTML = html;
   }
 
-  async function renderFlowchart(trace) {
+  async function renderFlowchart(trace, codeLines) {
     if (!trace || trace.length === 0) {
       document.getElementById('flowchart').innerHTML = `<div class="empty">No data for flowchart.</div>`;
       return;
     }
 
-    // Build Mermaid logic based on function calls and major transitions
+    // CRITICAL FIX: To prevent Mermaid syntax crashes, we build a sequential execution path 
+    // using clean IDs and strictly sanitized code snippets.
     let graphDef = "graph TD\n";
-    graphDef += "Start([Start Execution]) --> ";
+    graphDef += "Start([Start Program])\n";
     
-    let nodeCount = 0;
     let prevNode = "Start";
-    let activeFunc = "";
-
-    trace.forEach(step => {
-      // Create a node when a function is called, or track main execution loop
-      if (step.event === 'call' && step.func !== '<module>') {
-        let nodeId = `Node${nodeCount++}`;
-        graphDef += `${nodeId}["Call ${step.func}()"]\n`;
-        graphDef += `${nodeId} --> `;
-        prevNode = nodeId;
-      }
+    
+    // Limit to the first 40 execution steps to keep the flowchart readable and performant
+    const flowTrace = trace.slice(0, 40);
+    
+    flowTrace.forEach((step, idx) => {
+      let nodeId = `Step${idx}`;
+      let rawCode = codeLines[step.line - 1] ? codeLines[step.line - 1].trim() : "";
+      
+      // Remove characters that crash Mermaid nodes
+      let safeCode = rawCode.replace(/["\\[\](){}<>]/g, "'").substring(0, 35);
+      if (rawCode.length > 35) safeCode += "...";
+      
+      graphDef += `${nodeId}["Line ${step.line}: ${safeCode}"]\n`;
+      graphDef += `${prevNode} --> ${nodeId}\n`;
+      
+      prevNode = nodeId;
     });
 
-    graphDef += "End([Finish])";
+    graphDef += "End([Finish])\n";
+    graphDef += `${prevNode} --> End\n`;
 
-    document.getElementById('flowchart').innerHTML = `<div class="mermaid-container"><div class="mermaid" id="mermaid-graph">${graphDef}</div></div>`;
+    document.getElementById('flowchart').innerHTML = `<div class="mermaid-container"><pre class="mermaid" id="mermaid-graph">${graphDef}</pre></div>`;
     
     try {
-      // Force mermaid to render the newly injected graph
+      // Clear Mermaid registry and re-render the graph dynamically
+      mermaid.contentLoaded();
       await mermaid.run({
         querySelector: '.mermaid'
       });
     } catch(e) {
-      console.log("Mermaid syntax error:", e);
+      document.getElementById('flowchart').innerHTML = `<div class="console-box error-text">Failed to render flowchart. The logic might be too complex for a diagram.</div>`;
+      console.error("Mermaid Render Error:", e);
     }
   }
 </script>
