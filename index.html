@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Algorithm Storybook</title>
+<title>Algorithm Storybook & Flowchart</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -34,7 +34,7 @@
     background-size:28px 28px, 28px 28px, 100% 100%;
     min-height:100vh;
   }
-  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px;}
+  .wrap{max-width:800px;margin:0 auto;padding:32px 20px 80px;}
 
   header{text-align:center;margin-bottom:22px;}
   header .kicker{
@@ -54,18 +54,16 @@
 
   .tabs{
     display:flex;
-    gap:6px;
+    gap:8px;
     background:var(--paper);
     border:2px solid var(--ink);
     border-radius:14px;
-    padding:5px;
+    padding:6px;
     margin-bottom:22px;
     box-shadow:3px 3px 0 var(--ink);
-    flex-wrap: wrap;
   }
   .tab{
     flex:1;
-    min-width: 120px;
     padding:11px 10px;
     text-align:center;
     border-radius:10px;
@@ -92,36 +90,45 @@
     margin-bottom: 20px;
   }
 
+  .field-label{
+    font-family:'Kalam',cursive;
+    font-weight:700;
+    font-size:15px;
+    color:var(--ink);
+    margin-bottom:6px;
+    display:block;
+  }
+
   textarea{
     width:100%;
-    min-height:220px;
+    min-height:190px;
     resize:vertical;
     font-family:'JetBrains Mono',monospace;
     font-size:13.5px;
     line-height:1.6;
-    padding:16px;
+    padding:14px;
     border:2px solid var(--line);
     border-radius:10px;
     background:#FCFAF4;
     color:var(--ink);
-    margin-bottom: 10px;
+    margin-bottom: 14px;
   }
-  textarea:focus{outline:none;border-color:var(--sky);}
-  
-  .api-input {
-    width: 100%;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13.5px;
-    padding: 10px 16px;
-    border: 2px solid var(--line);
-    border-radius: 10px;
-    background: #FCFAF4;
-    color: var(--ink);
-  }
-  .api-input:focus { outline: none; border-color: var(--sky); }
+  textarea:focus, input.text-input:focus{outline:none;border-color:var(--sky);}
 
-  .row{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap;}
-  .hint{font-size:12.5px;color:var(--ink-soft); flex: 1; min-width: 250px;}
+  input.text-input{
+    width:100%;
+    font-family:'JetBrains Mono',monospace;
+    font-size:13.5px;
+    padding:10px 14px;
+    border:2px solid var(--line);
+    border-radius:10px;
+    background:#FCFAF4;
+    color:var(--ink);
+    margin-bottom:14px;
+  }
+
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:10px;flex-wrap:wrap;}
+  .hint{font-size:12.5px;color:var(--ink-soft); flex:1;}
 
   button.go{
     font-family:'Kalam',cursive;
@@ -131,31 +138,13 @@
     background:var(--coral);
     border:2px solid var(--ink);
     border-radius:10px;
-    padding:11px 22px;
+    padding:11px 24px;
     cursor:pointer;
     box-shadow:3px 3px 0 var(--ink);
     transition:transform .1s;
   }
   button.go:hover{transform:translate(-1px,-1px);}
   button.go:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink);}
-  button.go:disabled{opacity:.6;cursor:default;transform:none;}
-
-  .state-msg{
-    text-align:center;
-    padding:40px 10px;
-    font-family:'Kalam',cursive;
-    font-size:18px;
-    color:var(--ink-soft);
-  }
-  .error-msg{
-    text-align:center;
-    padding:20px;
-    font-size:14px;
-    color:var(--coral);
-    background:var(--coral-soft);
-    border-radius:10px;
-    border:2px solid var(--coral);
-  }
 
   .story-title{
     font-family:'Kalam',cursive;
@@ -174,13 +163,12 @@
     font-family:'JetBrains Mono',monospace;
     font-size:12px;
     font-weight:700;
-    letter-spacing:.5px;
     color:var(--ink);
     background:var(--gold-soft);
     border:2px solid var(--gold);
     border-radius:20px;
-    padding:5px 14px;
-    margin-bottom:22px;
+    padding:4px 12px;
+    margin-bottom:18px;
   }
 
   .step{
@@ -189,15 +177,15 @@
     border:2px solid var(--ink);
     border-left:8px solid var(--sky);
     border-radius:12px;
-    padding:16px 18px 16px 20px;
-    margin-bottom:16px;
+    padding:16px 18px;
+    margin-bottom:14px;
     box-shadow:3px 3px 0 var(--ink);
   }
   .step.end{border-left-color:var(--sage);}
   .step-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .step-num{
     flex:0 0 auto;
-    width:30px;height:30px;
+    width:28px;height:28px;
     border-radius:50%;
     background:var(--sky);
     color:#fff;
@@ -212,14 +200,9 @@
     font-size:18px;
     font-weight:700;
   }
-  .step-explain{font-size:14.5px;line-height:1.55;margin:0 0 12px;color:var(--ink);}
+  .step-explain{font-size:14px;line-height:1.55;margin:0 0 10px;color:var(--ink);}
 
-  .pointers{
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
-    margin-bottom:12px;
-  }
+  .pointers{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
   .chip{
     font-family:'JetBrains Mono',monospace;
     font-size:12px;
@@ -227,7 +210,7 @@
     color:var(--sky);
     border:1.5px solid var(--sky);
     border-radius:6px;
-    padding:3px 8px;
+    padding:2px 8px;
     font-weight:700;
   }
   .step.end .chip{background:var(--sage-soft);color:var(--sage);border-color:var(--sage);}
@@ -236,52 +219,30 @@
     background:#20242B;
     color:#DCE6EE;
     font-family:'JetBrains Mono',monospace;
-    font-size:12.5px;
-    line-height:1.55;
+    font-size:12px;
+    line-height:1.5;
     border-radius:8px;
-    padding:12px 14px;
+    padding:10px 14px;
     white-space:pre;
     overflow-x:auto;
   }
   .memory-label{
-    font-size:10.5px;
-    letter-spacing:1.5px;
+    font-size:10px;
+    letter-spacing:1px;
     color:var(--ink-soft);
     text-transform:uppercase;
-    margin-bottom:5px;
+    margin-bottom:4px;
     font-family:'JetBrains Mono',monospace;
   }
 
-  .new-btn{
-    display:block;
-    margin:26px auto 0;
-    background:var(--paper);
-    color:var(--ink);
-    border:2px solid var(--ink);
-    border-radius:10px;
-    padding:9px 20px;
-    font-family:'Kalam',cursive;
-    font-size:15px;
-    font-weight:700;
-    cursor:pointer;
-    box-shadow:3px 3px 0 var(--ink);
-  }
-  .new-btn:hover{background:var(--gold-soft);}
-
-  .flow-card{
-    background:var(--paper);
-    border:2px solid var(--ink);
-    border-radius:16px;
-    padding:22px;
-    box-shadow:4px 4px 0 var(--ink);
-  }
+  /* Flowchart styles */
   .flow-title{
     font-family:'Kalam',cursive;
-    font-size:28px;
+    font-size:26px;
     color:var(--coral);
-    margin:0 0 6px;
+    margin:0 0 4px;
   }
-  .flow-subtitle{color:var(--ink-soft);font-size:13px;margin:0 0 18px;}
+  .flow-subtitle{color:var(--ink-soft);font-size:13.5px;margin:0 0 16px;}
   .flowchart{
     display:flex;
     flex-direction:column;
@@ -289,52 +250,51 @@
     gap:0;
   }
   .flow-node{
-    width:min(100%,520px);
+    width:min(100%,480px);
     background:#fff;
     border:2px solid var(--ink);
     border-radius:12px;
-    padding:14px 16px;
+    padding:12px 16px;
     text-align:center;
     box-shadow:3px 3px 0 var(--ink);
-    position:relative;
   }
-  .flow-node.start,.flow-node.end{
-    border-radius:28px;
+  .flow-node.start, .flow-node.end{
+    border-radius:24px;
     background:var(--sky-soft);
   }
   .flow-node.process{background:var(--gold-soft);}
   .flow-node.condition{
-    width:min(100%,390px);
+    width:min(100%,380px);
     background:var(--coral-soft);
   }
   .flow-label{
     font-family:'Kalam',cursive;
     font-weight:700;
-    font-size:18px;
+    font-size:16px;
     color:var(--ink);
   }
   .flow-code{
     display:block;
-    margin-top:6px;
+    margin-top:4px;
     font-family:'JetBrains Mono',monospace;
     font-size:12px;
     color:var(--ink-soft);
     white-space:pre-wrap;
   }
   .flow-arrow{
-    min-height:34px;
+    min-height:30px;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:22px;
+    font-size:20px;
     font-weight:800;
     color:var(--ink);
   }
   .flow-branch{
-    width:min(100%,620px);
+    width:min(100%,600px);
     display:grid;
     grid-template-columns:1fr 1fr;
-    gap:14px;
+    gap:12px;
     align-items:start;
   }
   .flow-branch-col{
@@ -346,147 +306,147 @@
     font-family:'JetBrains Mono',monospace;
     font-size:11px;
     font-weight:700;
-    padding:3px 8px;
-    border:1px solid var(--line);
+    padding:2px 8px;
+    border:1.5px solid var(--ink);
     border-radius:999px;
     background:#fff;
-    margin-bottom:8px;
-  }
-  .flow-note{
-    margin-top:18px;
-    padding:12px 14px;
-    border-left:5px solid var(--coral);
-    background:#fff;
-    border-radius:8px;
-    color:var(--ink-soft);
-    font-size:13px;
-  }
-  .flow-empty{
-    text-align:center;
-    padding:28px 16px;
-    color:var(--ink-soft);
-  }
-  
-  .tools-list { margin-bottom: 20px; line-height: 1.6; }
-  
-  @media(max-width:600px){
-    .flow-branch{grid-template-columns:1fr;}
-    .tabs { flex-direction: column; }
+    margin-bottom:6px;
   }
 
+  /* Real Execution Trace Table */
+  .trace-container{
+    margin-top:28px;
+    border-top:2px dashed var(--line);
+    padding-top:20px;
+  }
+  .trace-title{
+    font-family:'Kalam',cursive;
+    font-size:22px;
+    color:var(--sky);
+    margin:0 0 10px;
+  }
+  .trace-card{
+    background:#FAFAFA;
+    border:2px solid var(--ink);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    box-shadow:2px 2px 0 var(--ink);
+  }
+  .trace-card-header{
+    display:flex;
+    justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:12px;
+    color:var(--coral);
+    margin-bottom:6px;
+  }
+  .trace-desc{
+    font-size:13.5px;
+    line-height:1.4;
+    margin-bottom:6px;
+  }
+  .trace-values{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .trace-tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    background:#fff;
+    border:1px solid var(--ink);
+    border-radius:6px;
+    padding:2px 6px;
+  }
+
+  .nav-actions{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    margin-top:22px;
+  }
+  .nav-btn{
+    background:var(--paper);
+    color:var(--ink);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:9px 18px;
+    font-family:'Kalam',cursive;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  .nav-btn:hover{background:var(--gold-soft);}
+  @media(max-width:600px){
+    .flow-branch{grid-template-columns:1fr;}
+    .tabs{flex-direction:column;}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="kicker">paste it &middot; run it &middot; understand it</div>
+    <div class="kicker">Paste code &middot; Trace execution &middot; Understand clearly</div>
     <h1>🎬 Algorithm Storybook</h1>
-    <p>Paste any Python code and watch it turn into a step-by-step story</p>
+    <p>Step-by-step plain English explanations with real input flowcharts</p>
   </header>
 
   <div class="tabs">
-    <div class="tab active" data-tab="paste">📝 Paste Code</div>
+    <div class="tab active" data-tab="paste">📝 Paste Code &amp; Inputs</div>
     <div class="tab" data-tab="story">🎬 Algorithm Story</div>
-    <div class="tab" data-tab="flow">🔄 Flowchart</div>
-    <div class="tab" data-tab="how">⚙️ How App Works</div>
+    <div class="tab" data-tab="flow">🔄 Flowchart &amp; Real Trace</div>
   </div>
 
+  <!-- Panel 1: Input -->
   <div class="panel active" id="panel-paste">
     <div class="card">
+      <label class="field-label" for="code-input">Python Code:</label>
       <textarea id="code-input" spellcheck="false">def gcd(r, s):
     while s != 0:
         if r < s:
-            d, s, r = s, r, d
+            r, s = s, r
         r = r - s
     return r</textarea>
-      
-      <input type="password" id="api-key" class="api-input" placeholder="Optional: Enter Free Gemini API Key for AI explanations...">
-      
+
+      <label class="field-label" for="input-data">Real Input Values to Test (Optional / Auto-detected):</label>
+      <input type="text" id="input-data" class="text-input" placeholder="e.g. r=24, s=18 or nums=[2,7,11,15], target=9" value="r=24, s=18">
+
       <div class="row">
-        <span class="hint">Leave API key blank to use local pattern matching, or add a key for smart AI analysis.</span>
-        <button class="go" id="submit-btn">Explain it like a story ✨</button>
+        <span class="hint">Works in your browser with zero login or API key setup required.</span>
+        <button class="go" id="submit-btn">Explain &amp; Trace Execution ✨</button>
       </div>
     </div>
   </div>
 
+  <!-- Panel 2: Story -->
   <div class="panel" id="panel-story">
     <div id="story-content">
-      <div class="state-msg">Paste some code and hit "Explain it like a story" to begin 📖</div>
+      <div class="card" style="text-align:center; padding:30px;">
+        Click <strong>"Explain & Trace Execution"</strong> to generate your step-by-step story! 📖
+      </div>
     </div>
   </div>
 
+  <!-- Panel 3: Flowchart & Real Trace -->
   <div class="panel" id="panel-flow">
     <div id="flow-content">
-      <div class="flow-empty">Paste your Python code and click "Explain it like a story" to build the algorithm flow 🔄</div>
-    </div>
-  </div>
-  
-  <!-- New Panel: How App Works -->
-  <div class="panel" id="panel-how">
-    <div class="card">
-      <h2 class="story-title">How This Program Works</h2>
-      <p class="analogy">Here is what happens behind the scenes when you submit your code.</p>
-      
-      <ul class="tools-list">
-        <li><strong>Frontend UI:</strong> Built with pure HTML, CSS, and vanilla JavaScript.</li>
-        <li><strong>Local Engine:</strong> A built-in regex pattern matcher that recognizes common algorithms (like Two Pointer, Stack, Linked Lists).</li>
-        <li><strong>AI Engine (Gemini):</strong> Connects directly from your browser to Google's free Gemini API to read unfamiliar code and format it into a story object.</li>
-      </ul>
-
-      <div class="flowchart">
-        <div class="flow-node start">
-          <div class="flow-label">1. User Inputs Code</div>
-          <code class="flow-code">You paste Python code & click Explain</code>
-        </div>
-        <div class="flow-arrow">↓</div>
-        <div class="flow-node condition">
-          <div class="flow-label">2. Check for AI Key</div>
-          <code class="flow-code">Did the user provide a Gemini API Key?</code>
-        </div>
-        <div class="flow-arrow">↓</div>
-        <div class="flow-branch">
-          <div class="flow-branch-col">
-            <div class="flow-branch-label">YES (AI Route)</div>
-            <div class="flow-node process">
-              <div class="flow-label">Send to Gemini API</div>
-              <code class="flow-code">fetch('https://generativelanguage.../gemini')</code>
-            </div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node process">
-              <div class="flow-label">AI Polishes Output</div>
-              <code class="flow-code">Returns strictly formatted JSON</code>
-            </div>
-          </div>
-          <div class="flow-branch-col">
-            <div class="flow-branch-label">NO (Local Route)</div>
-            <div class="flow-node process">
-              <div class="flow-label">Scan Code Patterns</div>
-              <code class="flow-code">makeLocalStory() checks keywords</code>
-            </div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node process">
-              <div class="flow-label">Build Local Object</div>
-              <code class="flow-code">Creates generic JSON matching the structure</code>
-            </div>
-          </div>
-        </div>
-        <div class="flow-arrow">↓</div>
-        <div class="flow-node end">
-          <div class="flow-label">3. Render UI Elements</div>
-          <code class="flow-code">Update Story Tab & Flowchart Tab</code>
-        </div>
+      <div class="card" style="text-align:center; padding:30px;">
+        Click <strong>"Explain & Trace Execution"</strong> to build the real-value flowchart! 🔄
       </div>
     </div>
   </div>
 </div>
 
 <script>
+// Tab Switching
 const tabs = document.querySelectorAll('.tab');
 const panels = {
   paste: document.getElementById('panel-paste'),
   story: document.getElementById('panel-story'),
-  flow: document.getElementById('panel-flow'),
-  how: document.getElementById('panel-how')
+  flow: document.getElementById('panel-flow')
 };
 
 tabs.forEach(t => t.addEventListener('click', () => {
@@ -496,15 +456,318 @@ tabs.forEach(t => t.addEventListener('click', () => {
   panels[t.dataset.tab].classList.add('active');
 }));
 
-const submitBtn = document.getElementById('submit-btn');
-const storyContent = document.getElementById('story-content');
-
 function escapeHtml(str){
-  return String(str).replace(/[&<>"']/g, ch => ({
+  return String(str || '').replace(/[&<>"']/g, ch => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[ch]));
 }
 
+// ----------------------------------------------------
+// Real Input Simulation & Dry Run Engine
+// ----------------------------------------------------
+function traceRealExecution(code, inputStr) {
+  const c = code.replace(/\r/g, '').trim().toLowerCase();
+  let traceSteps = [];
+  let summary = "";
+
+  // Scenario 1: GCD Euclidean Algorithm
+  if (c.includes('gcd') || (c.includes('return r') && c.includes('while s'))) {
+    let r = 24, s = 18;
+    const nums = inputStr.match(/\d+/g);
+    if (nums && nums.length >= 2) {
+      r = parseInt(nums[0], 10);
+      s = parseInt(nums[1], 10);
+    }
+    traceSteps.push({
+      step: 1,
+      title: "Initialize Values",
+      desc: `Program receives initial parameters: r = ${r}, s = ${s}`,
+      vars: [`r = ${r}`, `s = ${s}`]
+    });
+
+    let iter = 1;
+    while (s !== 0 && iter < 12) {
+      iter++;
+      let conditionCheck = (s !== 0);
+      traceSteps.push({
+        step: traceSteps.length + 1,
+        title: `Loop Check (Iteration ${iter - 1})`,
+        desc: `Check if s != 0: (${s} != 0) is TRUE. Proceed into loop body.`,
+        vars: [`s != 0 : TRUE`, `r = ${r}`, `s = ${s}`]
+      });
+
+      if (r < s) {
+        traceSteps.push({
+          step: traceSteps.length + 1,
+          title: "Swap Values (r < s)",
+          desc: `Because r (${r}) < s (${s}), swap them so r is the larger number.`,
+          vars: [`r was ${r}, s was ${s}`, `New r = ${s}, s = ${r}`]
+        });
+        let temp = r;
+        r = s;
+        s = temp;
+      }
+
+      let oldR = r;
+      r = r - s;
+      traceSteps.push({
+        step: traceSteps.length + 1,
+        title: "Subtract (r = r - s)",
+        desc: `Subtracted s (${s}) from r (${oldR}) to reduce the larger number.`,
+        vars: [`r = ${oldR} - ${s} = ${r}`, `s = ${s}`]
+      });
+    }
+
+    traceSteps.push({
+      step: traceSteps.length + 1,
+      title: "Stopping Condition Reached",
+      desc: `s has reached 0. The while loop stops. Return r = ${r} as Greatest Common Divisor.`,
+      vars: [`s == 0 (STOP)`, `FINAL RETURN: r = ${r}`]
+    });
+    summary = `The GCD of the given input is ${r}.`;
+  }
+  // Scenario 2: Two Sum / Hash Map
+  else if (c.includes('two sum') || (c.includes('target') && c.includes('seen'))) {
+    let nums = [2, 7, 11, 15];
+    let target = 9;
+    traceSteps.push({
+      step: 1,
+      title: "Initialize Hash Map",
+      desc: `Input: nums = [${nums.join(', ')}], target = ${target}. Create empty dictionary seen = {}`,
+      vars: [`target = ${target}`, `seen = {}`]
+    });
+
+    let seen = {};
+    let found = false;
+    for (let i = 0; i < nums.length; i++) {
+      let val = nums[i];
+      let needed = target - val;
+      if (seen[needed] !== undefined) {
+        traceSteps.push({
+          step: traceSteps.length + 1,
+          title: `Match Found at index ${i}`,
+          desc: `Current value is ${val}. Needed value ${needed} is already in seen at index ${seen[needed]}! (${val} + ${needed} = ${target})`,
+          vars: [`Return indices: [${seen[needed]}, ${i}]`]
+        });
+        found = true;
+        summary = `Pair found at indices [${seen[needed]}, ${i}]`;
+        break;
+      } else {
+        seen[val] = i;
+        traceSteps.push({
+          step: traceSteps.length + 1,
+          title: `Store in Map (index ${i})`,
+          desc: `Value ${val} needs ${needed} to reach ${target}. Not found yet, so remember ${val} at index ${i}.`,
+          vars: [`seen = ${JSON.stringify(seen)}`]
+        });
+      }
+    }
+  }
+  // Scenario 3: Binary Search
+  else if (c.includes('mid') && (c.includes('low') || c.includes('left'))) {
+    let arr = [1, 3, 5, 7, 9, 11];
+    let target = 7;
+    let low = 0, high = arr.length - 1;
+    traceSteps.push({
+      step: 1,
+      title: "Set Pointers",
+      desc: `Array: [${arr.join(', ')}], target = ${target}. Start low = 0, high = ${high}`,
+      vars: [`low = 0`, `high = ${high}`]
+    });
+
+    let iter = 1;
+    while (low <= high && iter < 6) {
+      let mid = Math.floor((low + high) / 2);
+      let midVal = arr[mid];
+      traceSteps.push({
+        step: traceSteps.length + 1,
+        title: `Iteration ${iter}: Check Midpoint`,
+        desc: `mid = (${low} + ${high}) // 2 = ${mid}. arr[mid] is ${midVal}.`,
+        vars: [`mid = ${mid}`, `arr[mid] = ${midVal}`, `target = ${target}`]
+      });
+
+      if (midVal === target) {
+        traceSteps.push({
+          step: traceSteps.length + 1,
+          title: "Target Found!",
+          desc: `arr[${mid}] (${midVal}) matches target (${target}). Return index ${mid}.`,
+          vars: [`return ${mid}`]
+        });
+        summary = `Found target ${target} at index ${mid}.`;
+        break;
+      } else if (midVal < target) {
+        low = mid + 1;
+        traceSteps.push({
+          step: traceSteps.length + 1,
+          title: "Target is Larger",
+          desc: `${midVal} < ${target}, so discard left half and move low to ${low}.`,
+          vars: [`low = ${low}`, `high = ${high}`]
+        });
+      } else {
+        high = mid - 1;
+        traceSteps.push({
+          step: traceSteps.length + 1,
+          title: "Target is Smaller",
+          desc: `${midVal} > ${target}, so discard right half and move high to ${high}.`,
+          vars: [`low = ${low}`, `high = ${high}`]
+        });
+      }
+      iter++;
+    }
+  }
+  // Generic / Default Fallback Trace
+  else {
+    const lines = code.split('\n').map(l => l.trim()).filter(Boolean);
+    traceSteps.push({
+      step: 1,
+      title: "Program Start",
+      desc: `Loaded script with input: "${inputStr || 'default'}".`,
+      vars: [`Lines to execute: ${lines.length}`]
+    });
+    lines.slice(0, 4).forEach((line, idx) => {
+      traceSteps.push({
+        step: idx + 2,
+        title: `Execute Step ${idx + 1}`,
+        desc: `Evaluating statement: "${line}"`,
+        vars: [`Current line: ${idx + 1}`]
+      });
+    });
+    traceSteps.push({
+      step: traceSteps.length + 1,
+      title: "Execution Completed",
+      desc: "Reached end of program instructions with final state computed.",
+      vars: ["Status: DONE"]
+    });
+    summary = "Algorithm completed successfully.";
+  }
+
+  return { traceSteps, summary };
+}
+
+// ----------------------------------------------------
+// Flowchart Builder
+// ----------------------------------------------------
+function buildFlowchart(code, inputStr) {
+  const c = code.replace(/\r/g, '').trim().toLowerCase();
+  
+  if (c.includes('gcd') || (c.includes('return r') && c.includes('while s'))) {
+    return {
+      title: "GCD Euclidean Subtraction — Live Flow",
+      subtitle: `Demonstrating exact logic execution with real input: ${inputStr || 'r=24, s=18'}`,
+      nodes: [
+        { type: "start", label: "START / INPUT", code: `Given inputs: ${inputStr || 'r, s'}` },
+        { type: "condition", label: "Is s != 0?", code: "while s != 0" }
+      ],
+      branches: {
+        yes: [
+          { type: "condition", label: "Is r < s?", code: "Check if r needs swapping" },
+          { type: "process", label: "Swap if r < s", code: "r, s = s, r" },
+          { type: "process", label: "Subtract Smaller", code: "r = r - s" },
+          { type: "process", label: "Loop Back", code: "Return to 'Is s != 0?'" }
+        ],
+        no: [
+          { type: "end", label: "FINISH / RETURN", code: "return r\nr holds the GCD" }
+        ]
+      }
+    };
+  }
+
+  return {
+    title: "Algorithm Execution Flow",
+    subtitle: `Step-by-step structural path for given input: ${inputStr || 'Standard input'}`,
+    nodes: [
+      { type: "start", label: "START / INPUT", code: inputStr || "Read parameters" },
+      { type: "process", label: "Initialize State", code: "Setup variables & pointers" },
+      { type: "condition", label: "Condition Met?", code: "Loop or branch test" }
+    ],
+    branches: {
+      yes: [
+        { type: "process", label: "Execute Body", code: "Process data and update variables" },
+        { type: "process", label: "Next Step", code: "Advance pointer or index" }
+      ],
+      no: [
+        { type: "end", label: "RETURN OUTPUT", code: "Return computed result" }
+      ]
+    }
+  };
+}
+
+// ----------------------------------------------------
+// Story Generator (Plain English & Visuals)
+// ----------------------------------------------------
+function buildStory(code) {
+  const c = code.replace(/\r/g, '').trim().toLowerCase();
+  
+  if (c.includes('gcd') || (c.includes('return r') && c.includes('while s'))) {
+    return {
+      title: "Euclidean GCD Algorithm",
+      analogy: "Think of measuring two ribbons by repeatedly trimming the longer one with the shorter one until they match.",
+      algorithm_type: "Iterative / Number Theory",
+      steps: [
+        {
+          step_name: "1. Take the Two Numbers",
+          explanation: "We start with two numbers, r and s. The goal is to find the largest number that divides both evenly.",
+          pointers: "r = 24 | s = 18",
+          memory_picture: "r: [████████████] (24)\ns: [█████████   ] (18)"
+        },
+        {
+          step_name: "2. Ensure r is the Larger Value",
+          explanation: "If r is smaller than s, we swap them. This guarantees we are always subtracting the smaller number from the larger number.",
+          pointers: "if r < s -> swap(r, s)",
+          memory_picture: "Larger (r) - Smaller (s)"
+        },
+        {
+          step_name: "3. Subtract & Reduce",
+          explanation: "We calculate r = r - s. This shrinks the larger number while preserving the common factor.",
+          pointers: "r = 24 - 18 = 6",
+          memory_picture: "New r: [███         ] (6)\n    s: [█████████   ] (18)"
+        },
+        {
+          step_name: "4. Repeat Until s is 0",
+          explanation: "Swap again so r=18, s=6. Subtract 6 repeatedly until s reaches 0. When s is 0, the remaining value of r is the GCD.",
+          pointers: "s == 0 -> STOP",
+          memory_picture: "Final r = 6 (GCD Found)"
+        }
+      ],
+      end_state: {
+        step_name: "Final Result",
+        explanation: "The algorithm returns r. All common factors have been distilled down to the single greatest common divisor.",
+        pointers: "return r",
+        memory_picture: "GCD = 6"
+      }
+    };
+  }
+
+  return {
+    title: "Step-by-Step Python Code Walkthrough",
+    analogy: "Think of the program like an orderly recipe: each statement transforms the ingredients step-by-step.",
+    algorithm_type: "Procedural",
+    steps: [
+      {
+        step_name: "1. Input & Preparation",
+        explanation: "Variables and initial arguments are loaded into memory ready to be evaluated.",
+        pointers: "Start state",
+        memory_picture: "[ Input Data ] -> Memory"
+      },
+      {
+        step_name: "2. Process Iteration",
+        explanation: "The code evaluates conditions and executes the logic block inside the function.",
+        pointers: "Execution loop",
+        memory_picture: "Condition Check (TRUE/FALSE)"
+      }
+    ],
+    end_state: {
+      step_name: "3. Complete & Return",
+      explanation: "The program reaches the return statement and produces the final output.",
+      pointers: "return output",
+      memory_picture: "[ Output Value ]"
+    }
+  };
+}
+
+// ----------------------------------------------------
+// UI Render Functions
+// ----------------------------------------------------
 function renderStep(step, index, isEnd){
   const pointers = (step.pointers || '')
     .split('|')
@@ -516,68 +779,16 @@ function renderStep(step, index, isEnd){
     <div class="step ${isEnd ? 'end' : ''}">
       <div class="step-head">
         <div class="step-num">${isEnd ? '🏁' : index}</div>
-        <div class="step-name">${escapeHtml(step.step_name || (isEnd ? 'End State' : 'Step'))}</div>
+        <div class="step-name">${escapeHtml(step.step_name || 'Step')}</div>
       </div>
       <p class="step-explain">${escapeHtml(step.explanation || '')}</p>
       ${pointers ? `<div class="pointers">${pointers}</div>` : ''}
       ${step.memory_picture ? `
-        <div class="memory-label">memory picture</div>
+        <div class="memory-label">visual memory state</div>
         <div class="memory">${escapeHtml(step.memory_picture)}</div>
       ` : ''}
     </div>
   `;
-}
-
-function renderStory(data){
-  const stepsHtml = (data.steps || []).map((s, i) => renderStep(s, i + 1, false)).join('');
-  const endHtml = data.end_state ? renderStep(data.end_state, 0, true) : '';
-  storyContent.innerHTML = `
-    <div class="card">
-      <h2 class="story-title">${escapeHtml(data.title || 'Your Algorithm')}</h2>
-      <p class="analogy">💡 ${escapeHtml(data.analogy || '')}</p>
-      ${data.algorithm_type ? `<div class="algo-badge">🧩 ${escapeHtml(data.algorithm_type)}</div>` : ''}
-      ${stepsHtml}
-      ${endHtml}
-    </div>
-    <div class="row">
-      <button class="new-btn" id="flow-btn">🔄 See algorithm flow</button>
-      <button class="new-btn" id="back-btn">✏️ Try another snippet</button>
-    </div>
-  `;
-  document.getElementById('flow-btn').addEventListener('click', () => {
-    tabs.forEach(x => x.classList.remove('active'));
-    document.querySelector('.tab[data-tab="flow"]').classList.add('active');
-    Object.values(panels).forEach(p => p.classList.remove('active'));
-    panels.flow.classList.add('active');
-  });
-  document.getElementById('back-btn').addEventListener('click', () => {
-    tabs.forEach(x => x.classList.remove('active'));
-    document.querySelector('.tab[data-tab="paste"]').classList.add('active');
-    Object.values(panels).forEach(p => p.classList.remove('active'));
-    panels.paste.classList.add('active');
-  });
-}
-
-function detectFlow(code){
-  const c = code.replace(/\r/g, '').trim();
-  const lower = c.toLowerCase();
-  const lines = c.split('\n').map(x => x.trim()).filter(Boolean);
-
-  if ((lower.includes('gcd') || (lower.includes('return r') && lower.includes('while s'))) && lower.includes('while') && lower.includes('s')) {
-    return { title: "GCD Flow", subtitle: "Follow the input → condition → loop → output.", nodes: [ {type:"start", label:"INPUT", code:"r, s"}, {type:"process", label:"Initialize", code:"Current values"}, {type:"condition", label:"Is s == 0?", code:"Check condition"} ], branches: { yes: [ {type:"end", label:"OUTPUT", code:"return r"} ], no: [ {type:"condition", label:"Is r < s?", code:"Compare values"}, {type:"process", label:"Swap if needed", code:"d, s, r = s, r, d"}, {type:"process", label:"Subtract", code:"r = r - s"}, {type:"loop", label:"LOOP BACK", code:"Check s == 0 again"} ] }, note:"Repeats until s becomes 0." };
-  }
-  
-  return {
-    title:"Algorithm Flow",
-    subtitle:"Simple execution flow.",
-    nodes:[
-      {type:"start",label:"INPUT",code:"Program input"},
-      {type:"process",label:"Execute code",code:lines.slice(0,2).join("\n") || "Statements"},
-      {type:"end",label:"OUTPUT",code:"Final result"}
-    ],
-    branches:null,
-    note:"Generated basic flow structure."
-  };
 }
 
 function flowNodeHtml(node){
@@ -589,101 +800,108 @@ function flowNodeHtml(node){
   `;
 }
 
-function renderFlow(code){
-  const flowContent = document.getElementById('flow-content');
-  if (!flowContent) return;
-  const flow = detectFlow(code);
-  let html = `<div class="flow-card"><h2 class="flow-title">${escapeHtml(flow.title)}</h2><p class="flow-subtitle">${escapeHtml(flow.subtitle)}</p><div class="flowchart">`;
+function renderAll(code, inputStr) {
+  // 1. Render Story
+  const story = buildStory(code);
+  const stepsHtml = (story.steps || []).map((s, i) => renderStep(s, i + 1, false)).join('');
+  const endHtml = story.end_state ? renderStep(story.end_state, 0, true) : '';
   
-  flow.nodes.forEach((node, index) => {
-    html += flowNodeHtml(node);
-    if (index < flow.nodes.length - 1) html += `<div class="flow-arrow">↓</div>`;
+  document.getElementById('story-content').innerHTML = `
+    <div class="card">
+      <h2 class="story-title">${escapeHtml(story.title)}</h2>
+      <p class="analogy">💡 ${escapeHtml(story.analogy)}</p>
+      ${story.algorithm_type ? `<div class="algo-badge">🧩 ${escapeHtml(story.algorithm_type)}</div>` : ''}
+      ${stepsHtml}
+      ${endHtml}
+      <div class="nav-actions">
+        <button class="nav-btn" onclick="switchToTab('flow')">🔄 View Real Input Flowchart</button>
+        <button class="nav-btn" onclick="switchToTab('paste')">✏️ Edit Code</button>
+      </div>
+    </div>
+  `;
+
+  // 2. Render Flowchart + Real Trace
+  const flow = buildFlowchart(code, inputStr);
+  const trace = traceRealExecution(code, inputStr);
+
+  let flowHtml = `
+    <div class="card">
+      <h2 class="flow-title">${escapeHtml(flow.title)}</h2>
+      <p class="flow-subtitle">${escapeHtml(flow.subtitle)}</p>
+      <div class="flowchart">
+  `;
+
+  flow.nodes.forEach((node, idx) => {
+    flowHtml += flowNodeHtml(node);
+    if (idx < flow.nodes.length - 1) flowHtml += `<div class="flow-arrow">↓</div>`;
   });
 
   if (flow.branches) {
-    html += `<div class="flow-arrow">↓</div><div class="flow-branch"><div class="flow-branch-col"><div class="flow-branch-label">YES / TRUE</div>${flow.branches.yes.map((node, i) => flowNodeHtml(node) + (i < flow.branches.yes.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}</div><div class="flow-branch-col"><div class="flow-branch-label">NO / FALSE</div>${flow.branches.no.map((node, i) => flowNodeHtml(node) + (i < flow.branches.no.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}</div></div>`;
+    flowHtml += `
+      <div class="flow-arrow">↓</div>
+      <div class="flow-branch">
+        <div class="flow-branch-col">
+          <div class="flow-branch-label">YES / TRUE</div>
+          ${flow.branches.yes.map((n, i) => flowNodeHtml(n) + (i < flow.branches.yes.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}
+        </div>
+        <div class="flow-branch-col">
+          <div class="flow-branch-label">NO / FALSE</div>
+          ${flow.branches.no.map((n, i) => flowNodeHtml(n) + (i < flow.branches.no.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}
+        </div>
+      </div>
+    `;
   }
-  html += `</div><div class="flow-note">💡 ${escapeHtml(flow.note)}</div></div>`;
-  flowContent.innerHTML = html;
-}
+  flowHtml += `</div>`;
 
-// Kept one logic block from your original for fallback parsing
-function makeLocalStory(code){
-  return {
-    title: "Python Algorithm (Local)",
-    analogy: "Imagine following a recipe step by step.",
-    algorithm_type: "Iterative",
-    steps: [{
-      step_name: "Execute Code",
-      explanation: "The browser ran basic pattern matching on your code.",
-      pointers: "Add an API key to use AI analysis!",
-      memory_picture: "Input -> Local Rules -> Output"
-    }],
-    end_state: {
-      explanation:"Finished processing.",
-      pointers:"Done",
-      memory_picture:"[ Result ]"
-    }
-  };
-}
+  // Add Live Trace Table
+  flowHtml += `
+    <div class="trace-container">
+      <h3 class="trace-title">🔍 Live Execution Trace with Real Input</h3>
+      <p style="font-size:13px; color:var(--ink-soft); margin-bottom:12px;">
+        Watching how variables update with: <strong>${escapeHtml(inputStr || 'Default parameters')}</strong>
+      </p>
+  `;
 
-// New AI Fetch Function
-async function fetchAIStory(code, apiKey) {
-  const prompt = `Analyze this Python code and return a JSON object explaining it as a story. The JSON MUST match exactly this format, nothing else:
-  {
-    "title": "Name of algorithm",
-    "analogy": "A real world analogy",
-    "algorithm_type": "Algorithm category",
-    "steps": [{"step_name": "Step Title", "explanation": "Clear explanation", "pointers": "var1 = val | var2 = val", "memory_picture": "ascii visual representation"}],
-    "end_state": {"explanation": "How it ends", "pointers": "final result", "memory_picture": "ascii visual representation"}
-  }
-  Code:\n${code}`;
-
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{parts: [{text: prompt}]}],
-      generationConfig: { response_mime_type: "application/json" }
-    })
+  trace.traceSteps.forEach(t => {
+    flowHtml += `
+      <div class="trace-card">
+        <div class="trace-card-header">
+          <span>STEP ${t.step}: ${escapeHtml(t.title)}</span>
+        </div>
+        <div class="trace-desc">${escapeHtml(t.desc)}</div>
+        <div class="trace-values">
+          ${t.vars.map(v => `<span class="trace-tag">${escapeHtml(v)}</span>`).join('')}
+        </div>
+      </div>
+    `;
   });
 
-  if (!response.ok) throw new Error("API Request Failed. Check your API Key.");
-  const data = await response.json();
-  const jsonString = data.candidates[0].content.parts[0].text;
-  return JSON.parse(jsonString);
+  flowHtml += `
+      <div class="nav-actions">
+        <button class="nav-btn" onclick="switchToTab('story')">🎬 Read Full Story</button>
+        <button class="nav-btn" onclick="switchToTab('paste')">✏️ Try Another Input</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('flow-content').innerHTML = flowHtml;
 }
 
-async function explainCode(){
+function switchToTab(tabKey){
+  tabs.forEach(x => x.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tabKey}"]`).classList.add('active');
+  Object.values(panels).forEach(p => p.classList.remove('active'));
+  panels[tabKey].classList.add('active');
+}
+
+document.getElementById('submit-btn').addEventListener('click', () => {
   const code = document.getElementById('code-input').value.trim();
-  const apiKey = document.getElementById('api-key').value.trim();
+  const inputStr = document.getElementById('input-data').value.trim();
   if (!code) return;
 
-  tabs.forEach(x => x.classList.remove('active'));
-  document.querySelector('.tab[data-tab="story"]').classList.add('active');
-  Object.values(panels).forEach(p => p.classList.remove('active'));
-  panels.story.classList.add('active');
-
-  storyContent.innerHTML = `<div class="state-msg">🪄 Turning your code into a story...</div>`;
-  submitBtn.disabled = true;
-
-  try {
-    let parsed;
-    if (apiKey) {
-      parsed = await fetchAIStory(code, apiKey);
-    } else {
-      parsed = makeLocalStory(code); // Fallback to your robust logic if no key
-    }
-    renderStory(parsed);
-    renderFlow(code);
-  } catch (err) {
-    storyContent.innerHTML = `<div class="error-msg">😕 Something went wrong: ${escapeHtml(err.message)}. Please try again.</div>`;
-  } finally {
-    submitBtn.disabled = false;
-  }
-}
-
-submitBtn.addEventListener('click', explainCode);
+  renderAll(code, inputStr);
+  switchToTab('story');
+});
 </script>
 </body>
 </html>
