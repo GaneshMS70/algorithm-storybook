@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algorithm Storybook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F6F2E8;
+    --paper:#FFFFFF;
+    --ink:#2B2A28;
+    --ink-soft:#6B6558;
+    --coral:#E2653F;
+    --coral-soft:#FBE3D8;
+    --sky:#3F7FA6;
+    --sky-soft:#DDEAF1;
+    --gold:#E4AC3E;
+    --gold-soft:#FBEFD3;
+    --sage:#4C8F68;
+    --sage-soft:#E1F0E5;
+    --line:#E4DCC9;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Nunito',sans-serif;
+    color:var(--ink);
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px),
+      var(--cream);
+    background-size:28px 28px, 28px 28px, 100% 100%;
+    min-height:100vh;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px;}
+
+  header{text-align:center;margin-bottom:22px;}
+  header .kicker{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:2px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+  }
+  header h1{
+    font-family:'Kalam',cursive;
+    font-size:36px;
+    margin:6px 0 4px;
+    color:var(--coral);
+  }
+  header p{margin:0;color:var(--ink-soft);font-size:14px;}
+
+  .tabs{
+    display:flex;
+    gap:6px;
+    background:var(--paper);
+    border:2px solid var(--ink);
+    border-radius:14px;
+    padding:5px;
+    margin-bottom:22px;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  .tab{
+    flex:1;
+    padding:11px 10px;
+    text-align:center;
+    border-radius:10px;
+    font-family:'Kalam',cursive;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--ink-soft);
+    transition:background .15s, color .15s;
+    user-select:none;
+  }
+  .tab.active{background:var(--coral);color:#fff;}
+  .tab:not(.active):hover{background:var(--coral-soft);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{
+    background:var(--paper);
+    border:2px solid var(--ink);
+    border-radius:16px;
+    padding:22px;
+    box-shadow:4px 4px 0 var(--ink);
+  }
+
+  textarea{
+    width:100%;
+    min-height:220px;
+    resize:vertical;
+    font-family:'JetBrains Mono',monospace;
+    font-size:13.5px;
+    line-height:1.6;
+    padding:16px;
+    border:2px solid var(--line);
+    border-radius:10px;
+    background:#FCFAF4;
+    color:var(--ink);
+  }
+  textarea:focus{outline:none;border-color:var(--sky);}
+
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap;}
+  .hint{font-size:12.5px;color:var(--ink-soft);}
+
+  button.go{
+    font-family:'Kalam',cursive;
+    font-size:17px;
+    font-weight:700;
+    color:#fff;
+    background:var(--coral);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:11px 22px;
+    cursor:pointer;
+    box-shadow:3px 3px 0 var(--ink);
+    transition:transform .1s;
+  }
+  button.go:hover{transform:translate(-1px,-1px);}
+  button.go:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink);}
+  button.go:disabled{opacity:.6;cursor:default;transform:none;}
+
+  .state-msg{
+    text-align:center;
+    padding:40px 10px;
+    font-family:'Kalam',cursive;
+    font-size:18px;
+    color:var(--ink-soft);
+  }
+  .error-msg{
+    text-align:center;
+    padding:20px;
+    font-size:14px;
+    color:var(--coral);
+    background:var(--coral-soft);
+    border-radius:10px;
+    border:2px solid var(--coral);
+  }
+
+  .story-title{
+    font-family:'Kalam',cursive;
+    font-size:26px;
+    color:var(--coral);
+    margin:0 0 4px;
+  }
+  .analogy{
+    font-size:15px;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+    font-style:italic;
+  }
+  .algo-badge{
+    display:inline-block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.5px;
+    color:var(--ink);
+    background:var(--gold-soft);
+    border:2px solid var(--gold);
+    border-radius:20px;
+    padding:5px 14px;
+    margin-bottom:22px;
+  }
+
+  .step{
+    position:relative;
+    background:var(--paper);
+    border:2px solid var(--ink);
+    border-left:8px solid var(--sky);
+    border-radius:12px;
+    padding:16px 18px 16px 20px;
+    margin-bottom:16px;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  .step.end{border-left-color:var(--sage);}
+  .step-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .step-num{
+    flex:0 0 auto;
+    width:30px;height:30px;
+    border-radius:50%;
+    background:var(--sky);
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:13px;
+  }
+  .step.end .step-num{background:var(--sage);}
+  .step-name{
+    font-family:'Kalam',cursive;
+    font-size:18px;
+    font-weight:700;
+  }
+  .step-explain{font-size:14.5px;line-height:1.55;margin:0 0 12px;color:var(--ink);}
+
+  .pointers{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:12px;
+  }
+  .chip{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    background:var(--sky-soft);
+    color:var(--sky);
+    border:1.5px solid var(--sky);
+    border-radius:6px;
+    padding:3px 8px;
+    font-weight:700;
+  }
+  .step.end .chip{background:var(--sage-soft);color:var(--sage);border-color:var(--sage);}
+
+  .memory{
+    background:#20242B;
+    color:#DCE6EE;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    line-height:1.55;
+    border-radius:8px;
+    padding:12px 14px;
+    white-space:pre;
+    overflow-x:auto;
+  }
+  .memory-label{
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    margin-bottom:5px;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .new-btn{
+    display:block;
+    margin:26px auto 0;
+    background:var(--paper);
+    color:var(--ink);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:9px 20px;
+    font-family:'Kalam',cursive;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  .new-btn:hover{background:var(--gold-soft);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">paste it &middot; run it &middot; understand it</div>
+    <h1>🎬 Algorithm Storybook</h1>
+    <p>Paste any Python code and watch it turn into a step-by-step story</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="paste">📝 Paste Code</div>
+    <div class="tab" data-tab="story">🎬 Algorithm Story</div>
+  </div>
+
+  <div class="panel active" id="panel-paste">
+    <div class="card">
+      <textarea id="code-input" spellcheck="false">def gcd(r, s):
+    while s != 0:
+        if r < s:
+            d, s, r = s, r, d
+        r = r - s
+    return r</textarea>
+      <div class="row">
+        <span class="hint">Any Python snippet works — loops, recursion, sorting, linked lists...</span>
+        <button class="go" id="submit-btn">Explain it like a story ✨</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-story">
+    <div id="story-content">
+      <div class="state-msg">Paste some code and hit "Explain it like a story" to begin 📖</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const tabs = document.querySelectorAll('.tab');
+const panels = {
+  paste: document.getElementById('panel-paste'),
+  story: document.getElementById('panel-story'),
+};
+tabs.forEach(t => t.addEventListener('click', () => {
+  tabs.forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  Object.values(panels).forEach(p => p.classList.remove('active'));
+  panels[t.dataset.tab].classList.add('active');
+}));
+
+const submitBtn = document.getElementById('submit-btn');
+const storyContent = document.getElementById('story-content');
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+
+function renderStep(step, index, isEnd){
+  const pointers = (step.pointers || '')
+    .split('|')
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => `<span class="chip">${escapeHtml(p)}</span>`)
+    .join('');
+  return `
+    <div class="step ${isEnd ? 'end' : ''}">
+      <div class="step-head">
+        <div class="step-num">${isEnd ? '🏁' : index}</div>
+        <div class="step-name">${escapeHtml(step.step_name || (isEnd ? 'End State' : 'Step'))}</div>
+      </div>
+      <p class="step-explain">${escapeHtml(step.explanation || '')}</p>
+      ${pointers ? `<div class="pointers">${pointers}</div>` : ''}
+      ${step.memory_picture ? `
+        <div class="memory-label">memory picture</div>
+        <div class="memory">${escapeHtml(step.memory_picture)}</div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderStory(data){
+  const stepsHtml = (data.steps || []).map((s, i) => renderStep(s, i + 1, false)).join('');
+  const endHtml = data.end_state ? renderStep(data.end_state, 0, true) : '';
+  storyContent.innerHTML = `
+    <div class="card">
+      <h2 class="story-title">${escapeHtml(data.title || 'Your Algorithm')}</h2>
+      <p class="analogy">💡 ${escapeHtml(data.analogy || '')}</p>
+      ${data.algorithm_type ? `<div class="algo-badge">🧩 ${escapeHtml(data.algorithm_type)}</div>` : ''}
+      ${stepsHtml}
+      ${endHtml}
+    </div>
+    <button class="new-btn" id="back-btn">✏️ Try another snippet</button>
+  `;
+  document.getElementById('back-btn').addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    document.querySelector('.tab[data-tab="paste"]').classList.add('active');
+    Object.values(panels).forEach(p => p.classList.remove('active'));
+    panels.paste.classList.add('active');
+  });
+}
+
+async function explainCode(){
+  const code = document.getElementById('code-input').value.trim();
+  if (!code){ return; }
+
+  tabs.forEach(x => x.classList.remove('active'));
+  document.querySelector('.tab[data-tab="story"]').classList.add('active');
+  Object.values(panels).forEach(p => p.classList.remove('active'));
+  panels.story.classList.add('active');
+
+  storyContent.innerHTML = `<div class="state-msg">🪄 Turning your code into a story...</div>`;
+  submitBtn.disabled = true;
+
+  const systemPrompt = `You are a friendly teacher explaining Python code to a curious 10-year-old using a step-by-step story format. Use a simple, consistent real-world analogy throughout (like friends in a line, toy boxes, a treasure map, etc). Avoid jargon; when a technical term is needed, explain it simply.
+
+Respond ONLY with valid JSON, no markdown fences, no preamble, no trailing text. Match exactly this schema:
+{
+  "title": "short algorithm name",
+  "analogy": "one sentence real-world analogy for the whole algorithm",
+  "algorithm_type": "short tag, e.g. Two-Pointer / Iterative / Recursive / Sliding Window / Divide & Conquer",
+  "steps": [
+    {
+      "step_name": "short step title",
+      "explanation": "2-3 simple sentences tied to the analogy",
+      "pointers": "var1 = value | var2 = value",
+      "memory_picture": "a small plain-text diagram, max 4 lines, showing the current state"
+    }
+  ],
+  "end_state": {
+    "explanation": "what the final result means",
+    "pointers": "final var = value",
+    "memory_picture": "small plain-text diagram of the final state"
+  }
+}
+Keep to at most 6 steps in the "steps" array. Keep every string short and simple so the whole JSON response stays well under 900 tokens.`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: `Explain this Python code:\n\n${code}` }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    const textBlocks = (data.content || []).filter(b => b.type === "text").map(b => b.text);
+    let raw = textBlocks.join("\n").trim();
+    raw = raw.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      throw new Error("Could not parse the story — try again or simplify the snippet.");
+    }
+
+    renderStory(parsed);
+  } catch (err) {
+    storyContent.innerHTML = `<div class="error-msg">😕 Something went wrong: ${escapeHtml(err.message || 'unknown error')}. Please try again.</div>`;
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+submitBtn.addEventListener('click', explainCode);
+</script>
+</body>
+</html>
