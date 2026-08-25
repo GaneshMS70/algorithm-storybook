@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Stops the 404 favicon error in your Network tab -->
+<link rel="icon" href="data:,">
 <title>Pro Execution Tracer & Flowchart</title>
 
 <!-- Pyodide for Browser Python Engine -->
@@ -38,12 +40,15 @@
 
   .layout { display: flex; flex: 1; height: calc(100vh - 50px); }
 
-  /* Left Panel: Editor */
+  /* Left Panel: Editor & Info */
   .editor-pane { width: 40%; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--bg-main); }
   .pane-header { padding: 10px 16px; background: var(--bg-panel); border-bottom: 1px solid var(--border); font-family: var(--font-code); font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
   
   textarea { flex: 1; width: 100%; background: var(--bg-main); color: var(--text-main); font-family: var(--font-code); font-size: 13.5px; line-height: 1.5; padding: 16px; border: none; outline: none; resize: none; white-space: pre; }
   
+  .tech-stack-info { background: #010409; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .tech-stack-info strong { color: var(--blue); }
+
   .btn-run { background: var(--green); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-ui); font-size: 13px; }
   .btn-run:hover { opacity: 0.8; }
   .btn-run:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
@@ -62,7 +67,7 @@
   .console-box { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 16px; font-family: var(--font-code); font-size: 13px; color: var(--text-main); white-space: pre-wrap; min-height: 100px; }
 
   /* Flowchart container */
-  .mermaid-container { background: white; border-radius: 8px; padding: 20px; text-align: center; min-height: 300px; display: flex; justify-content: center; align-items: flex-start;}
+  .mermaid-container { background: white; border-radius: 8px; padding: 20px; text-align: center; min-height: 300px; display: flex; justify-content: center; align-items: flex-start; overflow: auto; }
 
   /* Trace Timeline */
   .trace-step { display: flex; margin-bottom: 20px; position: relative; }
@@ -81,14 +86,14 @@
   .var-val { color: var(--purple); }
 
   .empty { text-align: center; color: var(--text-muted); font-size: 14px; margin-top: 40px; }
-  .error-text { color: var(--red); }
+  .error-text { color: var(--red); font-family: var(--font-code); font-size: 13px; }
 </style>
 </head>
 <body>
 
   <header>
     <h1>Code Decoder & Tracer <span>100% Free / No API / Real-time Execution</span></h1>
-    <span style="font-size:12px; color:var(--text-muted);">Powered by Pyodide & Mermaid.js</span>
+    <span style="font-size:12px; color:var(--text-muted);">Powered by WebAssembly</span>
   </header>
 
   <div class="layout">
@@ -153,6 +158,14 @@ if __name__ == "__main__":
     print("Initial:", sll.to_list())
     sll.delete_value(20)
     print("After Deleting 20:", sll.to_list())</textarea>
+      
+      <!-- Educational Panel -->
+      <div class="tech-stack-info">
+        <strong>How it works (100% Local Browser Execution):</strong><br>
+        1. <strong>Pyodide:</strong> A full Python environment running in WebAssembly. No servers or APIs are used.<br>
+        2. <strong>sys.settrace:</strong> A built-in Python debugger module that intercepts memory state on every single line of code executed.<br>
+        3. <strong>Mermaid.js:</strong> Maps your executed lines into a visual flowchart. It auto-detects <code>if</code> and <code>while</code> loops to draw decision diamonds.
+      </div>
     </div>
 
     <!-- OUTPUT / TRACE / FLOWCHART -->
@@ -181,6 +194,7 @@ if __name__ == "__main__":
   </div>
 
 <script>
+  // Initialize Mermaid with a clean theme
   mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
   // Tab switching logic
@@ -262,7 +276,6 @@ def run_and_trace(code_str):
     error_msg = None
     try:
         sys.settrace(tracer)
-        # CRITICAL FIX: Executing with __name__ == "__main__" ensures the testing block actually runs!
         exec(code_str, {"__name__": "__main__"})
         sys.settrace(None)
     except Exception as e:
@@ -294,7 +307,9 @@ def run_and_trace(code_str):
       
       renderTrace(result.trace, codeLines);
       renderConsole(result.stdout, result.error);
-      renderFlowchart(result.trace, codeLines);
+      
+      // We explicitly wait for the flowchart to render
+      await renderFlowchart(result.trace, codeLines);
       
     } catch (e) {
       renderConsole("", e.message);
@@ -353,48 +368,59 @@ def run_and_trace(code_str):
   }
 
   async function renderFlowchart(trace, codeLines) {
+    const chartContainer = document.getElementById('flowchart');
+    
     if (!trace || trace.length === 0) {
-      document.getElementById('flowchart').innerHTML = `<div class="empty">No data for flowchart.</div>`;
+      chartContainer.innerHTML = `<div class="empty">No data for flowchart.</div>`;
       return;
     }
 
-    // CRITICAL FIX: To prevent Mermaid syntax crashes, we build a sequential execution path 
-    // using clean IDs and strictly sanitized code snippets.
+    chartContainer.innerHTML = `<div class="empty">Generating Logic Flowchart...</div>`;
+
+    // Cap the flowchart at 60 steps to prevent browser freezing on infinite loops
+    const flowTrace = trace.slice(0, 60);
+    
     let graphDef = "graph TD\n";
-    graphDef += "Start([Start Program])\n";
-    
+    graphDef += "Start([Start Execution])\n";
     let prevNode = "Start";
-    
-    // Limit to the first 40 execution steps to keep the flowchart readable and performant
-    const flowTrace = trace.slice(0, 40);
     
     flowTrace.forEach((step, idx) => {
       let nodeId = `Step${idx}`;
       let rawCode = codeLines[step.line - 1] ? codeLines[step.line - 1].trim() : "";
       
-      // Remove characters that crash Mermaid nodes
-      let safeCode = rawCode.replace(/["\\[\](){}<>]/g, "'").substring(0, 35);
-      if (rawCode.length > 35) safeCode += "...";
+      // CRITICAL: Aggressive sanitization to prevent Mermaid crash. 
+      // Replace all quotes, brackets, and arrows with safe characters.
+      let safeCode = rawCode.replace(/["\\[\]{}]/g, '').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 40);
+      if (rawCode.length > 40) safeCode += "...";
       
-      graphDef += `${nodeId}["Line ${step.line}: ${safeCode}"]\n`;
+      // If the code is a condition, render it as a Diamond { }
+      if (rawCode.startsWith("if ") || rawCode.startsWith("while ") || rawCode.startsWith("elif ")) {
+        graphDef += `${nodeId}{"${safeCode}"}\n`;
+      } else {
+        // Otherwise render as a standard process box [ ]
+        graphDef += `${nodeId}["${safeCode}"]\n`;
+      }
+      
       graphDef += `${prevNode} --> ${nodeId}\n`;
-      
       prevNode = nodeId;
     });
 
-    graphDef += "End([Finish])\n";
+    graphDef += "End([Finish Execution])\n";
     graphDef += `${prevNode} --> End\n`;
 
-    document.getElementById('flowchart').innerHTML = `<div class="mermaid-container"><pre class="mermaid" id="mermaid-graph">${graphDef}</pre></div>`;
-    
     try {
-      // Clear Mermaid registry and re-render the graph dynamically
-      mermaid.contentLoaded();
-      await mermaid.run({
-        querySelector: '.mermaid'
-      });
+      // Create a unique ID for the mermaid render to avoid caching issues
+      const id = 'mermaid-svg-' + Date.now();
+      const { svg } = await mermaid.render(id, graphDef);
+      
+      chartContainer.innerHTML = `<div class="mermaid-container">${svg}</div>`;
     } catch(e) {
-      document.getElementById('flowchart').innerHTML = `<div class="console-box error-text">Failed to render flowchart. The logic might be too complex for a diagram.</div>`;
+      chartContainer.innerHTML = `
+        <div class="console-box error-text">
+          <strong>Flowchart Generation Failed.</strong><br>
+          Reason: The algorithm logic was too complex or contained syntax that the graph renderer could not parse.<br><br>
+          Error Log: ${escapeHTML(e.message)}
+        </div>`;
       console.error("Mermaid Render Error:", e);
     }
   }
