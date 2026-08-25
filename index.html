@@ -251,6 +251,110 @@
     box-shadow:3px 3px 0 var(--ink);
   }
   .new-btn:hover{background:var(--gold-soft);}
+
+  .flow-card{
+    background:var(--paper);
+    border:2px solid var(--ink);
+    border-radius:16px;
+    padding:22px;
+    box-shadow:4px 4px 0 var(--ink);
+  }
+  .flow-title{
+    font-family:'Kalam',cursive;
+    font-size:28px;
+    color:var(--coral);
+    margin:0 0 6px;
+  }
+  .flow-subtitle{color:var(--ink-soft);font-size:13px;margin:0 0 18px;}
+  .flowchart{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0;
+  }
+  .flow-node{
+    width:min(100%,520px);
+    background:#fff;
+    border:2px solid var(--ink);
+    border-radius:12px;
+    padding:14px 16px;
+    text-align:center;
+    box-shadow:3px 3px 0 var(--ink);
+    position:relative;
+  }
+  .flow-node.start,.flow-node.end{
+    border-radius:28px;
+    background:var(--sky-soft);
+  }
+  .flow-node.process{background:var(--gold-soft);}
+  .flow-node.condition{
+    width:min(100%,390px);
+    background:var(--coral-soft);
+    transform:rotate(0deg);
+  }
+  .flow-label{
+    font-family:'Kalam',cursive;
+    font-weight:700;
+    font-size:18px;
+    color:var(--ink);
+  }
+  .flow-code{
+    display:block;
+    margin-top:6px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    white-space:pre-wrap;
+  }
+  .flow-arrow{
+    min-height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:800;
+    color:var(--ink);
+  }
+  .flow-branch{
+    width:min(100%,620px);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    align-items:start;
+  }
+  .flow-branch-col{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .flow-branch-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    font-weight:700;
+    padding:3px 8px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:#fff;
+    margin-bottom:8px;
+  }
+  .flow-note{
+    margin-top:18px;
+    padding:12px 14px;
+    border-left:5px solid var(--coral);
+    background:#fff;
+    border-radius:8px;
+    color:var(--ink-soft);
+    font-size:13px;
+  }
+  .flow-empty{
+    text-align:center;
+    padding:28px 16px;
+    color:var(--ink-soft);
+  }
+  @media(max-width:600px){
+    .flow-branch{grid-template-columns:1fr;}
+  }
+
 </style>
 </head>
 <body>
@@ -264,6 +368,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="paste">📝 Paste Code</div>
     <div class="tab" data-tab="story">🎬 Algorithm Story</div>
+    <div class="tab" data-tab="flow">🔄 Step-by-Step Flow</div>
   </div>
 
   <div class="panel active" id="panel-paste">
@@ -286,6 +391,12 @@
       <div class="state-msg">Paste some code and hit "Explain it like a story" to begin 📖</div>
     </div>
   </div>
+
+  <div class="panel" id="panel-flow">
+    <div id="flow-content">
+      <div class="flow-empty">Paste your Python code and click "Explain it like a story" to build the algorithm flow 🔄</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -293,6 +404,7 @@ const tabs = document.querySelectorAll('.tab');
 const panels = {
   paste: document.getElementById('panel-paste'),
   story: document.getElementById('panel-story'),
+  flow: document.getElementById('panel-flow'),
 };
 tabs.forEach(t => t.addEventListener('click', () => {
   tabs.forEach(x => x.classList.remove('active'));
@@ -344,8 +456,17 @@ function renderStory(data){
       ${stepsHtml}
       ${endHtml}
     </div>
-    <button class="new-btn" id="back-btn">✏️ Try another snippet</button>
+    <div class="row">
+      <button class="new-btn" id="flow-btn">🔄 See algorithm flow</button>
+      <button class="new-btn" id="back-btn">✏️ Try another snippet</button>
+    </div>
   `;
+  document.getElementById('flow-btn').addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    document.querySelector('.tab[data-tab="flow"]').classList.add('active');
+    Object.values(panels).forEach(p => p.classList.remove('active'));
+    panels.flow.classList.add('active');
+  });
   document.getElementById('back-btn').addEventListener('click', () => {
     tabs.forEach(x => x.classList.remove('active'));
     document.querySelector('.tab[data-tab="paste"]').classList.add('active');
@@ -354,7 +475,473 @@ function renderStory(data){
   });
 }
 
-async function explainCode(){
+
+function detectFlow(code){
+  const c = code.replace(/\r/g, '').trim();
+  const lower = c.toLowerCase();
+  const lines = c.split('\n').map(x => x.trim()).filter(Boolean);
+
+  // GCD-style Euclidean subtraction flow, matching the uploaded flowchart example.
+  if ((lower.includes('gcd') || (lower.includes('return r') && lower.includes('while s'))) &&
+      lower.includes('while') && lower.includes('s')) {
+    return {
+      title: "GCD — Step-by-Step Algorithm Flow",
+      subtitle: "Follow the input → condition → loop → update → output path.",
+      nodes: [
+        {type:"start", label:"INPUT", code:"r, s"},
+        {type:"process", label:"Initialize", code:"Keep r and s as the current values."},
+        {type:"condition", label:"Is s == 0?", code:"Check the stopping condition."},
+      ],
+      branches: {
+        yes: [
+          {type:"end", label:"OUTPUT", code:"return r\nr is the GCD"}
+        ],
+        no: [
+          {type:"condition", label:"Is r < s?", code:"Compare the two current values."},
+          {type:"process", label:"If r < s", code:"Swap/update the values so r is the larger value."},
+          {type:"process", label:"Subtract", code:"r = r - s"},
+          {type:"loop", label:"LOOP BACK", code:"Check s == 0 again."}
+        ]
+      },
+      note:"The key idea is repetition: each loop makes the numbers smaller until s becomes 0. The remaining r is the GCD."
+    };
+  }
+
+  // Reverse linked list flow.
+  if ((lower.includes('linked list') || c.includes('.next')) &&
+      (lower.includes('reverse') || lower.includes('prev') || lower.includes('curr'))) {
+    return {
+      title:"Reverse Linked List — Step-by-Step Flow",
+      subtitle:"Save the next node, reverse one link, then move the pointers.",
+      nodes:[
+        {type:"start",label:"INPUT",code:"head"},
+        {type:"process",label:"Initialize pointers",code:"prev = None\ncurr = head"},
+        {type:"condition",label:"Is curr None?",code:"while curr"},
+      ],
+      branches:{
+        yes:[{type:"end",label:"OUTPUT",code:"return prev\nprev is the new head"}],
+        no:[
+          {type:"process",label:"Save next",code:"next_node = curr.next"},
+          {type:"process",label:"Reverse link",code:"curr.next = prev"},
+          {type:"process",label:"Move pointers",code:"prev = curr\ncurr = next_node"},
+          {type:"loop",label:"LOOP BACK",code:"Check curr again"}
+        ]
+      },
+      note:"Every iteration reverses exactly one arrow. The saved next node prevents the remaining list from being lost."
+    };
+  }
+
+  // Stack flow.
+  if ((lower.includes('stack') || c.includes('.pop()')) && (lower.includes('push') || lower.includes('pop'))) {
+    return {
+      title:"Stack — Step-by-Step Flow",
+      subtitle:"A stack follows LIFO: Last In, First Out.",
+      nodes:[
+        {type:"start",label:"INPUT",code:"values / operations"},
+        {type:"process",label:"Create stack",code:"stack = []"},
+        {type:"condition",label:"More operations?",code:"Continue while input remains."}
+      ],
+      branches:{
+        yes:[
+          {type:"condition",label:"Push or Pop?",code:"Choose the requested operation."},
+          {type:"process",label:"Push",code:"stack.append(value)"},
+          {type:"process",label:"Pop",code:"value = stack.pop()"},
+          {type:"loop",label:"LOOP BACK",code:"Process the next operation"}
+        ],
+        no:[{type:"end",label:"OUTPUT",code:"Final stack / result"}]
+      },
+      note:"The top of the stack is the last element in the Python list. append() adds to the top; pop() removes from the top."
+    };
+  }
+
+  // Generic loop flow.
+  if (lower.includes('for ') || lower.includes('while ')) {
+    const loopLine = lines.find(x => /^for\b|^while\b/.test(x)) || "loop condition";
+    const returnLine = lines.find(x => /^return\b/.test(x));
+    return {
+      title:"Algorithm — Step-by-Step Flow",
+      subtitle:"A generic flow built from the loop and return structure in your Python code.",
+      nodes:[
+        {type:"start",label:"INPUT",code:"Program input"},
+        {type:"process",label:"Initialize",code:"Set variables / starting state."},
+        {type:"condition",label:"Loop condition?",code:loopLine}
+      ],
+      branches:{
+        yes:[
+          {type:"process",label:"Process current item",code:"Execute the loop body."},
+          {type:"process",label:"Update state",code:"Move to the next iteration."},
+          {type:"loop",label:"LOOP BACK",code:"Check the condition again"}
+        ],
+        no:[{type:"end",label:"OUTPUT",code:returnLine || "Final result"}]
+      },
+      note:"The loop repeats the same process until its condition becomes false."
+    };
+  }
+
+  return {
+    title:"Algorithm — Step-by-Step Flow",
+    subtitle:"A simple execution flow based on the structure of your Python code.",
+    nodes:[
+      {type:"start",label:"INPUT",code:"Program input"},
+      {type:"process",label:"Read the code",code:lines.slice(0,2).join("\n") || "Python statements"},
+      {type:"process",label:"Execute statements",code:"Follow the code from top to bottom."},
+      {type:"end",label:"OUTPUT",code:"Final value / result"}
+    ],
+    branches:null,
+    note:"For unfamiliar code, this browser-only version shows the execution structure rather than using an AI model."
+  };
+}
+
+function flowNodeHtml(node){
+  return `
+    <div class="flow-node ${escapeHtml(node.type || 'process')}">
+      <div class="flow-label">${escapeHtml(node.label || '')}</div>
+      ${node.code ? `<code class="flow-code">${escapeHtml(node.code)}</code>` : ''}
+    </div>
+  `;
+}
+
+function renderFlow(code){
+  const flowContent = document.getElementById('flow-content');
+  if (!flowContent) return;
+
+  const flow = detectFlow(code);
+  let html = `
+    <div class="flow-card">
+      <h2 class="flow-title">${escapeHtml(flow.title)}</h2>
+      <p class="flow-subtitle">${escapeHtml(flow.subtitle)}</p>
+      <div class="flowchart">
+  `;
+
+  flow.nodes.forEach((node, index) => {
+    html += flowNodeHtml(node);
+    if (index < flow.nodes.length - 1) html += `<div class="flow-arrow">↓</div>`;
+  });
+
+  if (flow.branches) {
+    html += `
+      <div class="flow-arrow">↓</div>
+      <div class="flow-branch">
+        <div class="flow-branch-col">
+          <div class="flow-branch-label">YES / TRUE</div>
+          ${flow.branches.yes.map((node, i) => flowNodeHtml(node) + (i < flow.branches.yes.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}
+        </div>
+        <div class="flow-branch-col">
+          <div class="flow-branch-label">NO / FALSE</div>
+          ${flow.branches.no.map((node, i) => flowNodeHtml(node) + (i < flow.branches.no.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+      </div>
+      <div class="flow-note">💡 ${escapeHtml(flow.note)}</div>
+    </div>
+  `;
+
+  flowContent.innerHTML = html;
+}
+
+function makeLocalStory(code){
+  const c = code.replace(/\r/g, '').trim();
+  const lines = c.split('\n').map(x => x.trim()).filter(Boolean);
+  const lower = c.toLowerCase();
+
+  let title = "Python Algorithm";
+  let analogy = "Think of the code as a small set of instructions that moves through data one step at a time.";
+  let algorithm_type = "Iterative";
+  let steps = [];
+  let end_state = {
+    explanation: "The algorithm finishes after following its instructions and produces its final result.",
+    pointers: "result = final value",
+    memory_picture: "input → process → result"
+  };
+
+  const add = (name, explanation, pointers, memory) =>
+    steps.push({step_name:name, explanation, pointers, memory_picture:memory});
+
+  if ((lower.includes("linked list") || c.includes(".next")) &&
+      (lower.includes("reverse") || lower.includes("prev") || lower.includes("curr"))) {
+    title = "Reverse Linked List";
+    analogy = "Imagine a line of people turning around so each person points back to the person before them.";
+    algorithm_type = "Iterative / Linked List";
+
+    add("Start at the head",
+        "curr points to the first node. prev starts as None because the new first node will eventually point to nothing.",
+        "curr = head | prev = None",
+        "prev → None\ncurr → [10] → [20] → [30] → None");
+
+    add("Save the next node",
+        "Before changing curr.next, save the next node. Otherwise the rest of the linked list could be lost.",
+        "next_node = curr.next",
+        "[10] → [20] → [30] → None\n       ↑\n   next_node");
+
+    add("Reverse the arrow",
+        "Change curr.next so the current node points backward to prev. This is the actual reversal step.",
+        "curr.next = prev",
+        "None ← [10]    [20] → [30] → None\n       ↑\n      curr");
+
+    add("Move the pointers",
+        "Move prev onto the current node and curr onto the saved next node. Then repeat the same process.",
+        "prev = curr | curr = next_node",
+        "None ← [10]    [20] → [30] → None\n       ↑       ↑\n      prev    curr");
+
+    add("Repeat",
+        "Each loop reverses one more arrow until curr becomes None. At that point every link points backward.",
+        "while curr",
+        "None ← [10] ← [20] ← [30]\n                         ↑\n                       prev");
+
+    end_state = {
+      explanation:"prev is now the new head of the reversed linked list.",
+      pointers:"head = prev",
+      memory_picture:"new head\n   ↓\n[30] → [20] → [10] → None"
+    };
+
+  } else if ((lower.includes("stack") || c.includes(".pop()") || c.includes(".append(")) &&
+             (lower.includes("push") || lower.includes("pop"))) {
+    title = "Stack — LIFO";
+    analogy = "Imagine a stack of plates: the last plate you put on is the first plate you take off.";
+    algorithm_type = "Stack / LIFO";
+
+    add("Create the stack",
+        "The list is used as the stack. It starts empty, so there is nothing to remove yet.",
+        "stack = []",
+        "TOP\n ↓\n[ ]");
+
+    add("Push an item",
+        "append adds an item to the top of the stack.",
+        "stack.append(value)",
+        "TOP\n ↓\n[30]\n[20]\n[10]");
+
+    add("Push more items",
+        "Every new item goes on top of the previous item. The newest value is therefore easiest to remove.",
+        "top = newest item",
+        "TOP → [30]\n       [20]\n       [10]");
+
+    add("Pop the top",
+        "pop removes and returns the last item. This is why a stack follows Last In, First Out.",
+        "value = stack.pop()",
+        "pop() → 30\nTOP → [20]\n       [10]");
+
+    end_state = {
+      explanation:"The stack always removes the most recently added item first.",
+      pointers:"top = last list element",
+      memory_picture:"TOP\n ↓\n[20]\n[10]\nLIFO"
+    };
+
+  } else if (lower.includes("sliding") || (lower.includes("window") && (lower.includes("left") || lower.includes("right")))) {
+    title = "Sliding Window";
+    analogy = "Imagine looking through a small window over a row of numbers and sliding that window one position at a time.";
+    algorithm_type = "Sliding Window";
+
+    add("Create the first window",
+        "Start with a fixed or expanding range of elements. Calculate the information needed for the first window.",
+        "left = 0 | right = k - 1",
+        "[ 1  2  3 ]  4  5\n  ↑       ↑\n left    right");
+
+    add("Move the window",
+        "Move the right side forward. The window now includes a new element.",
+        "right += 1",
+        "1  [ 2  3  4 ]  5\n    ↑       ↑\n   left    right");
+
+    add("Remove the old element",
+        "If the window has a fixed size, remove the element that falls outside on the left instead of calculating the whole window again.",
+        "current += nums[right] - nums[left]",
+        "1  [ 2  3  4 ]  5\n↑\nleave window");
+
+    add("Track the best answer",
+        "After each window, compare its value with the answer found so far.",
+        "best = max(best, current)",
+        "window value → current\nbest answer   → best");
+
+    end_state = {
+      explanation:"The window has visited the required ranges without repeatedly processing the same elements.",
+      pointers:"left/right = final window boundaries",
+      memory_picture:"[ current window ] → best answer"
+    };
+
+  } else if (lower.includes("two sum") || (lower.includes("seen") && lower.includes("target") && lower.includes("enumerate"))) {
+    title = "Two Sum";
+    analogy = "Imagine checking whether you have already seen the partner number needed to reach the target.";
+    algorithm_type = "Hash Map / Two Sum";
+
+    add("Start a lookup table",
+        "Create an empty dictionary to remember numbers that have already appeared and where they appeared.",
+        "seen = {}",
+        "seen\n{}\n\nnumbers → scan left to right");
+
+    add("Read one number",
+        "Take the current number and calculate the value needed to reach the target.",
+        "need = target - value",
+        "target = 9\nvalue = 2\nneed = 7");
+
+    add("Check the table",
+        "If the needed value is already in the dictionary, the two numbers form the answer.",
+        "if need in seen",
+        "seen: {7: index}\ncurrent value: 2\n2 + 7 = target");
+
+    add("Remember the number",
+        "If the partner is not found, store the current number and its index so a later number can use it.",
+        "seen[value] = index",
+        "seen\n{2: 0}\n{2: 0, 7: 1}");
+
+    end_state = {
+      explanation:"The matching pair is found by using the dictionary for fast lookup instead of checking every pair.",
+      pointers:"answer = [previous_index, current_index]",
+      memory_picture:"value + needed_value = target"
+    };
+
+  } else if (lower.includes("two pointer") || (lower.includes("left") && lower.includes("right") && (lower.includes("while") || lower.includes("for")))) {
+    title = "Two Pointer";
+    analogy = "Imagine two people starting at opposite ends of a row and moving inward until they meet.";
+    algorithm_type = "Two Pointer";
+
+    add("Place the pointers",
+        "One pointer starts at the beginning and the other at the end.",
+        "left = 0 | right = len(nums) - 1",
+        "left → [1, 2, 3, 4, 5] ← right");
+
+    add("Compare the values",
+        "Look at the two values currently selected by the pointers and decide which pointer should move.",
+        "nums[left] | nums[right]",
+        "[1, 2, 3, 4, 5]\n ↑           ↑\nleft       right");
+
+    add("Move one pointer",
+        "Move the pointer that can improve the condition being checked. This avoids checking every pair.",
+        "left += 1 OR right -= 1",
+        "[1, 2, 3, 4, 5]\n    ↑     ↑\n  left   right");
+
+    add("Repeat",
+        "Continue until the pointers cross or meet.",
+        "while left < right",
+        "      ↑   ↑\n    left right\n      → ←");
+
+    end_state = {
+      explanation:"The pointers meet or cross, so all useful positions have been processed.",
+      pointers:"left >= right",
+      memory_picture:"[ processed | pointers ]"
+    };
+
+  } else if (lower.includes("binary search") || (lower.includes("low") && lower.includes("high") && lower.includes("mid"))) {
+    title = "Binary Search";
+    analogy = "Imagine searching for a word in a dictionary by opening the middle and throwing away the half that cannot contain the word.";
+    algorithm_type = "Divide & Conquer / Binary Search";
+
+    add("Set the search range",
+        "low points to the first position and high points to the last position of the sorted data.",
+        "low = 0 | high = len(nums) - 1",
+        "low → [1 3 5 7 9] ← high");
+
+    add("Find the middle",
+        "Choose the middle position so one comparison can eliminate about half the remaining data.",
+        "mid = (low + high) // 2",
+        "[1 3 | 5 | 7 9]\n     ↑\n    mid");
+
+    add("Compare with target",
+        "If the middle value is too small or too large, keep only the half where the target can still exist.",
+        "nums[mid] vs target",
+        "left half ✗ | mid | right half ?");
+
+    add("Shrink the range",
+        "Move low or high to discard the impossible half and repeat.",
+        "low = mid + 1 OR high = mid - 1",
+        "[ discarded ] | [ search range ]");
+
+    end_state = {
+      explanation:"The target is found, or the range becomes empty, proving that the target is not present.",
+      pointers:"low > high means not found",
+      memory_picture:"search range → smaller → smaller → result"
+    };
+
+  } else if (lower.includes("recursion") || (lower.includes("def ") && lower.includes("return") && c.split(/\n/).some(line => line.includes("(") && line.includes(")") && line.includes("def ")))) {
+    title = "Recursion";
+    analogy = "Imagine solving a big task by asking a smaller version of the same task to help, until you reach the simplest case.";
+    algorithm_type = "Recursive";
+
+    add("Call the function",
+        "The function starts with the original input and may call itself with a smaller input.",
+        "function(input)",
+        "big problem\n   ↓\nsmaller problem");
+
+    add("Check the base case",
+        "A base case tells the function when to stop making smaller calls.",
+        "if base_case: return",
+        "problem → simplest case → STOP");
+
+    add("Make the smaller call",
+        "If the base case is not reached, the function calls itself with a smaller problem.",
+        "return value * function(smaller)",
+        "P(n)\n ↓\nP(n-1)\n ↓\nP(n-2)");
+
+    add("Return upward",
+        "After the smallest call finishes, each waiting call receives its result and continues.",
+        "result returns through calls",
+        "P(1) → P(2) → P(3) → result");
+
+    end_state = {
+      explanation:"The recursive calls stop at the base case and their results combine into the final answer.",
+      pointers:"result = returned value",
+      memory_picture:"base case\n   ↑\nresults return upward"
+    };
+
+  } else if (lower.includes("for ") || lower.includes("while ")) {
+    title = "Loop Through the Data";
+    analogy = "Imagine walking through every item in a line and performing the same small action on each one.";
+    algorithm_type = "Iterative / Loop";
+
+    add("Start the loop",
+        "The loop begins with an initial position or value and prepares to process the data.",
+        "i = starting position",
+        "i → [first item] → [next] → [next]");
+
+    add("Process the current item",
+        "The statements inside the loop run for the item currently selected.",
+        "current = data[i]",
+        "current\n  ↓\n[data[i]]");
+
+    add("Update the position",
+        "The loop moves to the next item or changes its condition so another iteration can happen.",
+        "i += 1",
+        "[done] → [current] → [next]");
+
+    add("Repeat until finished",
+        "The loop keeps processing items until its condition becomes false.",
+        "condition → true / false",
+        "items: ✓ ✓ ✓ ✓ → finished");
+
+    end_state = {
+      explanation:"The loop stops when there are no more required iterations.",
+      pointers:"i = final position",
+      memory_picture:"processed items → final result"
+    };
+
+  } else {
+    title = "Python Code Walkthrough";
+    analogy = "Imagine following a recipe: read an instruction, do the action, update the ingredients, and continue to the next instruction.";
+    algorithm_type = "Step-by-Step";
+
+    lines.slice(0, 6).forEach((line, i) => {
+      const clean = line.slice(0, 120);
+      add(
+        `Step ${i + 1}`,
+        `This line is part of the algorithm: ${clean}`,
+        `line = ${i + 1}`,
+        `execution → line ${i + 1}\n${clean}`
+      );
+    });
+
+    end_state = {
+      explanation:"This browser-only version uses built-in rules, so unfamiliar algorithms receive a generic walkthrough instead of an AI-generated explanation.",
+      pointers:`lines_processed = ${Math.min(lines.length, 6)}`,
+      memory_picture:"Python code\n   ↓\nlocal rules\n   ↓\nstory"
+    };
+  }
+
+  return {title, analogy, algorithm_type, steps, end_state};
+}
+
+function explainCode(){
   const code = document.getElementById('code-input').value.trim();
   if (!code){ return; }
 
@@ -366,56 +953,10 @@ async function explainCode(){
   storyContent.innerHTML = `<div class="state-msg">🪄 Turning your code into a story...</div>`;
   submitBtn.disabled = true;
 
-  const systemPrompt = `You are a friendly teacher explaining Python code to a curious 10-year-old using a step-by-step story format. Use a simple, consistent real-world analogy throughout (like friends in a line, toy boxes, a treasure map, etc). Avoid jargon; when a technical term is needed, explain it simply.
-
-Respond ONLY with valid JSON, no markdown fences, no preamble, no trailing text. Match exactly this schema:
-{
-  "title": "short algorithm name",
-  "analogy": "one sentence real-world analogy for the whole algorithm",
-  "algorithm_type": "short tag, e.g. Two-Pointer / Iterative / Recursive / Sliding Window / Divide & Conquer",
-  "steps": [
-    {
-      "step_name": "short step title",
-      "explanation": "2-3 simple sentences tied to the analogy",
-      "pointers": "var1 = value | var2 = value",
-      "memory_picture": "a small plain-text diagram, max 4 lines, showing the current state"
-    }
-  ],
-  "end_state": {
-    "explanation": "what the final result means",
-    "pointers": "final var = value",
-    "memory_picture": "small plain-text diagram of the final state"
-  }
-}
-Keep to at most 6 steps in the "steps" array. Keep every string short and simple so the whole JSON response stays well under 900 tokens.`;
-
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: `Explain this Python code:\n\n${code}` }
-        ]
-      })
-    });
-
-    const data = await response.json();
-    const textBlocks = (data.content || []).filter(b => b.type === "text").map(b => b.text);
-    let raw = textBlocks.join("\n").trim();
-    raw = raw.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (e) {
-      throw new Error("Could not parse the story — try again or simplify the snippet.");
-    }
-
+    const parsed = makeLocalStory(code);
     renderStory(parsed);
+    renderFlow(code);
   } catch (err) {
     storyContent.innerHTML = `<div class="error-msg">😕 Something went wrong: ${escapeHtml(err.message || 'unknown error')}. Please try again.</div>`;
   } finally {
