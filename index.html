@@ -3,269 +3,102 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pro Algorithm Execution Tracer</title>
-<!-- Load Pyodide (Python for the Browser) -->
+<title>Pro Execution Tracer & Flowchart</title>
+
+<!-- Pyodide for Browser Python Engine -->
 <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<!-- Mermaid for Flowchart Generation -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
 <style>
   :root {
-    --bg-main: #0D1117;
-    --bg-panel: #161B22;
-    --bg-card: #21262D;
-    --border: #30363D;
-    --text-main: #C9D1D9;
-    --text-muted: #8B949E;
-    --accent-blue: #58A6FF;
-    --accent-green: #3FB950;
-    --accent-red: #F85149;
-    --accent-yellow: #D2A8FF;
+    --bg-main: #0d1117;
+    --bg-panel: #161b22;
+    --bg-card: #21262d;
+    --border: #30363d;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --blue: #58a6ff;
+    --green: #2ea043;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --orange: #ffa657;
     --font-code: 'JetBrains Mono', monospace;
     --font-ui: 'Inter', sans-serif;
   }
   
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg-main); color: var(--text-main); font-family: var(--font-ui); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  header { background: var(--bg-panel); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+  h1 { font-size: 18px; color: var(--text-main); font-weight: 600; }
+  h1 span { font-size: 12px; color: var(--text-muted); font-family: var(--font-code); margin-left: 12px; }
+
+  .layout { display: flex; flex: 1; height: calc(100vh - 50px); }
+
+  /* Left Panel: Editor */
+  .editor-pane { width: 40%; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--bg-main); }
+  .pane-header { padding: 10px 16px; background: var(--bg-panel); border-bottom: 1px solid var(--border); font-family: var(--font-code); font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
   
-  body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
-    font-family: var(--font-ui);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  header {
-    background-color: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  h1 { font-size: 20px; font-weight: 700; color: var(--text-main); }
-  h1 span { color: var(--accent-blue); font-family: var(--font-code); font-size: 16px; margin-left: 10px; font-weight: 400; }
-
-  .layout {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .editor-pane {
-    width: 45%;
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-panel);
-  }
-
-  .pane-header {
-    padding: 12px 16px;
-    font-family: var(--font-code);
-    font-size: 13px;
-    color: var(--text-muted);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-panel);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  textarea {
-    flex: 1;
-    width: 100%;
-    background: transparent;
-    color: var(--text-main);
-    font-family: var(--font-code);
-    font-size: 14px;
-    line-height: 1.6;
-    padding: 16px;
-    border: none;
-    resize: none;
-    outline: none;
-  }
-
-  .btn-run {
-    background: var(--accent-green);
-    color: #fff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-family: var(--font-ui);
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  textarea { flex: 1; width: 100%; background: var(--bg-main); color: var(--text-main); font-family: var(--font-code); font-size: 13.5px; line-height: 1.5; padding: 16px; border: none; outline: none; resize: none; white-space: pre; }
+  
+  .btn-run { background: var(--green); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-ui); font-size: 13px; }
   .btn-run:hover { opacity: 0.8; }
   .btn-run:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
 
-  .output-pane {
-    width: 55%;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-main);
-  }
-
-  .trace-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-muted);
-    text-align: center;
-  }
+  /* Right Panel: Output & Trace */
+  .right-pane { width: 60%; display: flex; flex-direction: column; background: var(--bg-main); }
   
-  .empty-state svg { width: 48px; margin-bottom: 16px; opacity: 0.5; }
+  .tabs { display: flex; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+  .tab { padding: 12px 20px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--blue); border-bottom: 2px solid var(--blue); }
 
-  /* Advanced Timeline UI */
-  .trace-step {
-    display: flex;
-    margin-bottom: 24px;
-    position: relative;
-  }
+  .panel-content { flex: 1; overflow-y: auto; padding: 20px; display: none; }
+  .panel-content.active { display: block; }
 
-  .step-number {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--bg-card);
-    border: 2px solid var(--accent-blue);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-code);
-    font-size: 12px;
-    font-weight: bold;
-    color: var(--accent-blue);
-    z-index: 2;
-    flex-shrink: 0;
-  }
+  /* Console Output */
+  .console-box { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 16px; font-family: var(--font-code); font-size: 13px; color: var(--text-main); white-space: pre-wrap; min-height: 100px; }
 
-  .trace-step::after {
-    content: '';
-    position: absolute;
-    left: 15px;
-    top: 32px;
-    bottom: -24px;
-    width: 2px;
-    background: var(--border);
-    z-index: 1;
-  }
+  /* Flowchart container */
+  .mermaid-container { background: white; border-radius: 8px; padding: 20px; text-align: center; overflow: auto; min-height: 300px; }
+
+  /* Trace Timeline */
+  .trace-step { display: flex; margin-bottom: 20px; position: relative; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-panel); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--font-code); font-size: 11px; font-weight: bold; color: var(--text-muted); z-index: 2; flex-shrink: 0; margin-top: 4px;}
+  .trace-step::after { content: ''; position: absolute; left: 13px; top: 32px; bottom: -20px; width: 2px; background: var(--border); z-index: 1; }
   .trace-step:last-child::after { display: none; }
-
-  .step-content {
-    margin-left: 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .step-code-header {
-    background: #1A1F26;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .step-source {
-    font-family: var(--font-code);
-    font-size: 13.5px;
-    color: var(--accent-yellow);
-    white-space: pre-wrap;
-    line-height: 1.5;
-  }
   
-  .step-meta {
-    font-family: var(--font-code);
-    font-size: 11px;
-    color: var(--text-muted);
-    background: var(--bg-main);
-    padding: 2px 8px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-  }
-
-  .step-locals {
-    padding: 12px 14px;
-    background: var(--bg-card);
-  }
+  .step-box { margin-left: 16px; flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .step-code { background: #1a1f26; padding: 10px 14px; font-family: var(--font-code); font-size: 13px; color: var(--orange); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;}
+  .step-meta { color: var(--text-muted); font-size: 11px; }
+  .step-locals { padding: 12px 14px; font-family: var(--font-code); font-size: 12.5px; }
   
-  .local-var {
-    font-family: var(--font-code);
-    font-size: 13px;
-    margin-bottom: 6px;
-    color: var(--text-main);
-    word-break: break-all;
-  }
-  .local-var:last-child { margin-bottom: 0; }
-  .var-name { color: var(--accent-blue); font-weight: bold; }
-  .var-val { color: var(--accent-green); }
+  .var-line { margin-bottom: 6px; word-break: break-all; }
+  .var-line:last-child { margin-bottom: 0; }
+  .var-name { color: var(--blue); font-weight: 600; }
+  .var-val { color: var(--purple); }
 
-  .error-block {
-    background: rgba(248, 81, 73, 0.1);
-    border: 1px solid var(--accent-red);
-    color: var(--accent-red);
-    padding: 16px;
-    border-radius: 8px;
-    font-family: var(--font-code);
-    font-size: 13px;
-    margin: 24px;
-  }
-
-  /* Loader */
-  .loader {
-    border: 3px solid var(--border);
-    border-top: 3px solid var(--accent-blue);
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    animation: spin 1s linear infinite;
-    display: none;
-  }
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: var(--bg-main); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  .empty { text-align: center; color: var(--text-muted); font-size: 14px; margin-top: 40px; }
+  .error-text { color: var(--red); }
 </style>
 </head>
 <body>
 
   <header>
-    <h1>Pro Algorithm Execution Tracer <span>[ 100% Local Python Engine ]</span></h1>
-    <a href="#" style="color:var(--text-muted); font-size:13px; font-family:var(--font-code);">No API required</a>
+    <h1>Code Decoder & Tracer <span>100% Free / No API / Real-time Execution</span></h1>
+    <span style="font-size:12px; color:var(--text-muted);">Powered by Pyodide & Mermaid.js</span>
   </header>
 
   <div class="layout">
-    <!-- EDITOR PANE -->
+    <!-- EDITOR -->
     <div class="editor-pane">
       <div class="pane-header">
         <span>source_code.py</span>
-        <button class="btn-run" id="run-btn" disabled>
-          <div class="loader" id="loader"></div>
-          <span id="btn-text">Initializing Python...</span>
-        </button>
+        <button class="btn-run" id="btn-run">▶ Run Code</button>
       </div>
-      <textarea id="code-input" spellcheck="false">
-class Node:
+      <textarea id="code-input" spellcheck="false">class Node:
     def __init__(self, val=0, next=None):
         self.val = val
         self.next = next
@@ -312,199 +145,238 @@ class SinglyLinkedList:
         return res
 
 if __name__ == "__main__":
+    # Real Inputs are defined right here in the code!
     sll = SinglyLinkedList()
     sll.insert_head(20)
     sll.insert_head(10)
     sll.insert_tail(30)
-    print("Initial:", sll.to_list())
+    print("Initial list:", sll.to_list())
     sll.delete_value(20)
-    print("After Deleting 20:", sll.to_list())
-</textarea>
+    print("After Deleting 20:", sll.to_list())</textarea>
     </div>
 
-    <!-- OUTPUT PANE -->
-    <div class="output-pane">
-      <div class="pane-header">
-        <span>Live Execution Flowchart & Stack Trace</span>
+    <!-- OUTPUT / TRACE / FLOWCHART -->
+    <div class="right-pane">
+      <div class="tabs">
+        <div class="tab active" data-target="trace">🔍 Line-by-Line Trace</div>
+        <div class="tab" data-target="flowchart">🔀 Dynamic Flowchart</div>
+        <div class="tab" data-target="console">🖥️ Console Output</div>
       </div>
-      <div class="trace-container" id="trace-container">
-        <div class="empty-state">
-          <svg fill="currentColor" viewBox="0 0 24 24"><path d="M13 10h-2V3h2v7zm0 11h-2v-7h2v7zm4.24-11.95l-1.41-1.41 4.95-4.95 1.41 1.41-4.95 4.95zm-9.9 0L2.39 4.1 3.8 2.69l4.95 4.95-1.41 1.41zm9.9 9.9l1.41-1.41 4.95 4.95-1.41 1.41-4.95-4.95zm-9.9 0l-4.95 4.95-1.41-1.41 4.95-4.95 1.41 1.41z"/></svg>
-          <p>Click "Run Code & Trace" to execute your program.</p>
-          <p style="font-size: 12px; margin-top:8px;">The execution engine will deeply inspect every variable step-by-step.</p>
-        </div>
+
+      <!-- Trace Panel -->
+      <div class="panel-content active" id="trace">
+        <div class="empty">Click "Run Code" to trace memory and variables.</div>
+      </div>
+
+      <!-- Flowchart Panel -->
+      <div class="panel-content" id="flowchart">
+        <div class="empty">Click "Run Code" to generate logic flowchart.</div>
+      </div>
+
+      <!-- Console Panel -->
+      <div class="panel-content" id="console">
+        <div class="empty">Console output will appear here.</div>
       </div>
     </div>
   </div>
 
 <script>
-  let pyodideInstance = null;
-  const runBtn = document.getElementById('run-btn');
-  const btnText = document.getElementById('btn-text');
-  const loader = document.getElementById('loader');
-  const traceContainer = document.getElementById('trace-container');
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
-  // Initialize the browser-based Python engine
-  async function initPython() {
-    try {
-      pyodideInstance = await loadPyodide();
-      runBtn.disabled = false;
-      loader.style.display = 'none';
-      btnText.innerText = 'Run Code & Trace ▶';
-    } catch (err) {
-      btnText.innerText = 'Engine Failed to Load';
-      console.error(err);
-    }
+  // Tab switching logic
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.target).classList.add('active');
+    });
+  });
+
+  let pyodideReady = false;
+  let pyodide = null;
+
+  async function loadEngine() {
+    document.getElementById('btn-run').innerText = "⏳ Loading Python...";
+    document.getElementById('btn-run').disabled = true;
+    pyodide = await loadPyodide();
+    pyodideReady = true;
+    document.getElementById('btn-run').innerText = "▶ Run Code";
+    document.getElementById('btn-run').disabled = false;
   }
-  initPython();
+  loadEngine();
 
-  // Python Script that acts as the internal debugger/tracer
-  const pythonTracerScript = `
+  // Python Script to inject for tracing
+  // It records lines, functions, local variables, and captures print() output
+  const tracerScript = `
 import sys
 import json
+import io
+import traceback
 
-def _run_traced_code(user_code):
-    execution_trace = []
-    step_count = 0
-    MAX_STEPS = 1500 # Prevent infinite loops from crashing browser
+def __serialize_obj(obj, depth=0):
+    if depth > 2: return "..."
+    if isinstance(obj, (int, float, str, bool, type(None))): return repr(obj)
+    if isinstance(obj, list): return "[" + ", ".join(__serialize_obj(i, depth+1) for i in obj) + "]"
+    if isinstance(obj, dict): return "{" + ", ".join(f"{repr(k)}:{__serialize_obj(v, depth+1)}" for k,v in obj.items()) + "}"
+    if hasattr(obj, '__dict__'):
+        attrs = {k: __serialize_obj(v, depth+1) for k, v in obj.__dict__.items() if not k.startswith('_')}
+        return f"<{type(obj).__name__} {attrs}>"
+    return repr(obj)
 
-    # Deep recursive function to unpack objects like 'Node' into readable JSON formats
-    def get_safe_dict(obj, depth=0):
-        if depth > 3: return "..."
-        if isinstance(obj, (int, float, str, bool, type(None))): return repr(obj)
-        if isinstance(obj, list): return "[" + ", ".join(get_safe_dict(i, depth+1) for i in obj) + "]"
-        if isinstance(obj, dict): return "{" + ", ".join(f"{repr(k)}: {get_safe_dict(v, depth+1)}" for k, v in obj.items()) + "}"
-        # Extract class attributes dynamically (Essential for Nodes and Linked Lists)
-        if hasattr(obj, '__dict__'):
-            class_name = type(obj).__name__
-            attrs = {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
-            attr_str = ", ".join(f"{k}={get_safe_dict(v, depth+1)}" for k, v in attrs.items())
-            return f"<{class_name} {attr_str}>"
-        return repr(obj)
-
+def run_and_trace(code_str):
+    trace_log = []
+    
+    # Capture print statements
+    captured_out = io.StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = captured_out
+    
     def tracer(frame, event, arg):
-        nonlocal step_count
-        if event == 'line':
-            step_count += 1
-            if step_count > MAX_STEPS:
-                raise RuntimeError("Execution limit reached (Infinite loop prevention).")
-            
-            # Skip tracing system files, only trace user input "<string>"
-            if frame.f_code.co_filename != "<string>":
-                return tracer
-                
-            safe_locals = {}
-            for k, v in frame.f_locals.items():
-                # Filter out raw modules/functions to keep trace clean
-                if not k.startswith('__') and type(v).__name__ not in ('module', 'function', 'type'):
-                    try:
-                        safe_locals[k] = get_safe_dict(v)
-                    except:
-                        safe_locals[k] = str(v)
-                        
-            execution_trace.append({
-                'line': frame.f_lineno,
-                'func': frame.f_code.co_name,
-                'locals': safe_locals
+        # Only trace the user's code string, ignore internal python files
+        if frame.f_code.co_filename == "<string>" and event in ['line', 'call']:
+            locs = {k: __serialize_obj(v) for k, v in frame.f_locals.items() if not k.startswith('__') and type(v).__name__ not in ('module', 'function', 'type')}
+            trace_log.append({
+                "line": frame.f_lineno,
+                "func": frame.f_code.co_name,
+                "event": event,
+                "locals": locs
             })
         return tracer
 
+    error_msg = None
     try:
-        compiled_code = compile(user_code, "<string>", "exec")
-        namespace = {} # Clean execution environment
-        
         sys.settrace(tracer)
-        exec(compiled_code, namespace)
+        exec(code_str, {})
         sys.settrace(None)
     except Exception as e:
         sys.settrace(None)
-        execution_trace.append({'error': str(e), 'type': type(e).__name__})
-        
-    return json.dumps(execution_trace)
+        error_msg = traceback.format_exc()
+
+    sys.stdout = old_stdout
+    
+    return json.dumps({
+        "trace": trace_log,
+        "stdout": captured_out.getvalue(),
+        "error": error_msg
+    })
 `;
 
-  function escapeHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, ch => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[ch]));
-  }
-
-  runBtn.addEventListener('click', async () => {
-    if (!pyodideInstance) return;
+  document.getElementById('btn-run').addEventListener('click', async () => {
+    if (!pyodideReady) return;
     
     const userCode = document.getElementById('code-input').value;
-    const codeLines = userCode.split('\\n');
+    // FIX: Using regex /\r?\n/ to split lines handles both Windows (\r\n) and Mac/Linux (\n) formatting properly.
+    const codeLines = userCode.split(/\r?\n/);
     
-    runBtn.disabled = true;
-    btnText.innerText = 'Executing...';
-    loader.style.display = 'block';
-    traceContainer.innerHTML = '';
-
+    document.getElementById('btn-run').innerText = "Running...";
+    
     try {
-      // Inject the tracer script into Pyodide
-      await pyodideInstance.runPythonAsync(pythonTracerScript);
+      await pyodide.runPythonAsync(tracerScript);
+      pyodide.globals.set("user_code", userCode);
+      const jsonRes = await pyodide.runPythonAsync(`run_and_trace(user_code)`);
+      const result = JSON.parse(jsonRes);
       
-      // Pass the user code string to Python and fetch the JSON execution result
-      pyodideInstance.globals.set("user_code_input", userCode);
-      const jsonResult = await pyodideInstance.runPythonAsync(`_run_traced_code(user_code_input)`);
-      const trace = JSON.parse(jsonResult);
+      renderTrace(result.trace, codeLines);
+      renderConsole(result.stdout, result.error);
+      renderFlowchart(result.trace);
       
-      renderTrace(trace, codeLines);
-    } catch (err) {
-      traceContainer.innerHTML = `<div class="error-block"><strong>Environment Error:</strong><br>${escapeHtml(err.message)}</div>`;
-    } finally {
-      runBtn.disabled = false;
-      btnText.innerText = 'Run Code & Trace ▶';
-      loader.style.display = 'none';
+    } catch (e) {
+      renderConsole("", str(e));
     }
+    
+    document.getElementById('btn-run').innerText = "▶ Run Code";
   });
+
+  function escapeHTML(str) {
+    return String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderConsole(stdout, error) {
+    let html = `<div class="console-box">${escapeHTML(stdout) || 'No print output.'}</div>`;
+    if (error) {
+      html += `<div class="console-box error-text" style="margin-top:10px;">${escapeHTML(error)}</div>`;
+    }
+    document.getElementById('console').innerHTML = html;
+  }
 
   function renderTrace(trace, codeLines) {
     if (!trace || trace.length === 0) {
-      traceContainer.innerHTML = `<div class="empty-state">No execution trace found. Did you forget to call your functions or add an 'if __name__ == "__main__":' block?</div>`;
+      document.getElementById('trace').innerHTML = `<div class="empty">No execution traced. Ensure you have an execution block (e.g., if __name__ == "__main__":)</div>`;
       return;
     }
 
     let html = '';
+    // Filter out 'call' events for the line-by-line view to avoid clutter
+    let stepCount = 1;
     
-    // Check if the last step was a runtime error
-    const lastStep = trace[trace.length - 1];
-    if (lastStep.error) {
-       html += `<div class="error-block"><strong>Runtime Error (${escapeHtml(lastStep.type)}):</strong><br>${escapeHtml(lastStep.error)}</div>`;
-       trace.pop(); // Remove error block from normal flow iteration
-    }
-
-    trace.forEach((step, index) => {
-      // Subtract 1 because Python line numbers are 1-indexed, but arrays are 0-indexed
-      const sourceLine = codeLines[step.line - 1] ? codeLines[step.line - 1].trim() : 'Unknown line';
+    trace.forEach(step => {
+      if(step.event !== 'line') return;
       
-      // Build variable states
-      let localsHtml = '';
-      if (Object.keys(step.locals).length === 0) {
-        localsHtml = `<div class="local-var" style="color:var(--text-muted); font-style:italic;">(No local variables at this state)</div>`;
+      const sourceLine = codeLines[step.line - 1] ? codeLines[step.line - 1].trim() : '(Line missing)';
+      
+      let locsHtml = '';
+      if(Object.keys(step.locals).length === 0){
+        locsHtml = `<div style="color:var(--text-muted); font-style:italic;">No local variables</div>`;
       } else {
-        for (const [key, val] of Object.entries(step.locals)) {
-          localsHtml += `<div class="local-var"><span class="var-name">${escapeHtml(key)}</span> = <span class="var-val">${escapeHtml(val)}</span></div>`;
+        for(const [k, v] of Object.entries(step.locals)){
+          locsHtml += `<div class="var-line"><span class="var-name">${escapeHTML(k)}</span> = <span class="var-val">${escapeHTML(v)}</span></div>`;
         }
       }
 
       html += `
         <div class="trace-step">
-          <div class="step-number">${index + 1}</div>
-          <div class="step-content">
-            <div class="step-code-header">
-              <span class="step-source">▶ ${escapeHtml(sourceLine)}</span>
-              <span class="step-meta">Line ${step.line} | func: ${escapeHtml(step.func)}</span>
+          <div class="step-num">${stepCount++}</div>
+          <div class="step-box">
+            <div class="step-code">
+              <span>${escapeHTML(sourceLine)}</span>
+              <span class="step-meta">Line ${step.line} | ${escapeHTML(step.func)}()</span>
             </div>
-            <div class="step-locals">
-              ${localsHtml}
-            </div>
+            <div class="step-locals">${locsHtml}</div>
           </div>
         </div>
       `;
     });
+    
+    document.getElementById('trace').innerHTML = html;
+  }
 
-    traceContainer.innerHTML = html;
+  async function renderFlowchart(trace) {
+    if (!trace || trace.length === 0) {
+      document.getElementById('flowchart').innerHTML = `<div class="empty">No data for flowchart.</div>`;
+      return;
+    }
+
+    // Build Mermaid logic based on function calls and major transitions
+    let graphDef = "graph TD\n";
+    graphDef += "Start([Start Execution]) --> ";
+    
+    let nodeCount = 0;
+    let prevNode = "Start";
+    let activeFunc = "";
+
+    trace.forEach(step => {
+      // Create a node when a function is called, or track main execution loop
+      if (step.event === 'call' && step.func !== '<module>') {
+        let nodeId = `Node${nodeCount++}`;
+        graphDef += `${nodeId}["Call ${step.func}()"]\n`;
+        graphDef += `${nodeId} --> `;
+        prevNode = nodeId;
+      }
+    });
+
+    graphDef += "End([Finish])";
+
+    document.getElementById('flowchart').innerHTML = `<div class="mermaid-container"><div class="mermaid" id="mermaid-graph">${graphDef}</div></div>`;
+    
+    try {
+      // Force mermaid to render the newly injected graph
+      await mermaid.run({
+        querySelector: '.mermaid'
+      });
+    } catch(e) {
+      console.log("Mermaid syntax error:", e);
+    }
   }
 </script>
 </body>
