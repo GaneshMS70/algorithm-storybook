@@ -6,6 +6,7 @@
 <title>Algorithm Storybook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <style>
   :root{
     --cream:#F6F2E8; --paper:#FFFFFF; --ink:#2B2A28; --ink-soft:#6B6558;
@@ -446,136 +447,163 @@ function makeLocalStory(code){
   return {title, analogy, algorithm_type, steps, end_state};
 }
 
-/* ---------- REAL INPUT FLOW: deterministic JS simulation, no AI needed ---------- */
+/* ---------- REAL INPUT FLOW: runs the ACTUAL pasted code with real Python (Pyodide/WASM), any program ---------- */
 
 function rfNode(shape, title, sub, value){
   let inner;
   if (shape === 'oval') inner = `<div class="rf-oval">${escapeHtml(title)}</div>`;
   else if (shape === 'parallelogram') inner = `<div class="rf-parallelogram"><span class="rf-inner">${escapeHtml(title)}</span></div>`;
+  else if (shape === 'diamond') return `<div class="rf-node-wrap"><div class="rf-diamond-outer"><div class="rf-diamond-shape"></div><div class="rf-diamond-text">${escapeHtml(title)}</div></div>${value ? `<div class="rf-value">${escapeHtml(value)}</div>` : ''}</div>`;
   else inner = `<div class="rf-rect"><div class="rf-title">${escapeHtml(title)}</div>${sub ? `<div class="rf-sub">${escapeHtml(sub)}</div>` : ''}</div>`;
   return `<div class="rf-node-wrap">${inner}${value ? `<div class="rf-value">${escapeHtml(value)}</div>` : ''}</div>`;
 }
 function rfArrow(){ return `<div class="rf-arrow">↓</div>`; }
-function rfDiamond(label){
-  return `<div class="rf-node-wrap"><div class="rf-diamond-outer"><div class="rf-diamond-shape"></div><div class="rf-diamond-text">${escapeHtml(label)}</div></div></div>`;
-}
-function rfBranch(yesHtml, noHtml, takenYes){
-  return `
-    <div class="flow-branch" style="margin:0 auto;">
-      <div class="flow-branch-col rf-branch-col ${takenYes ? '' : 'dim'}"><div class="flow-branch-label">YES</div>${yesHtml}</div>
-      <div class="flow-branch-col rf-branch-col ${takenYes ? 'dim' : ''}"><div class="flow-branch-label">NO</div>${noHtml}</div>
-    </div>
-  `;
+
+function classifyLine(src){
+  const t = src.trim();
+  if (/^(def|class)\b/.test(t)) return 'skip';
+  if (/^(if|elif|while|for)\b/.test(t)) return 'decision';
+  if (/\bprint\s*\(|\binput\s*\(/.test(t)) return 'io';
+  if (/^return\b/.test(t)) return 'return';
+  return 'process';
 }
 
-function extractMainCalls(code){
-  const m = code.match(/if\s+__name__\s*==\s*["']__main__["']\s*:([\s\S]*)/);
-  if (!m) return [];
-  const lines = m[1].split('\n').map(l => l.trim()).filter(Boolean);
-  const calls = [];
-  lines.forEach(line => {
-    let mm = line.match(/^(\w+)\s*=\s*(\w+)\(\s*\)\s*$/);
-    if (mm){ calls.push({type:'init', var:mm[1], cls:mm[2]}); return; }
-    mm = line.match(/^(\w+)\.(\w+)\(([^)]*)\)\s*$/);
-    if (mm){ calls.push({type:'call', var:mm[1], method:mm[2], arg:mm[3].trim()}); return; }
-    mm = line.match(/^print\((.*)\)\s*$/);
-    if (mm){ calls.push({type:'print', raw:mm[1]}); return; }
-  });
-  return calls;
+let pyodideInstance = null;
+let pyodideLoadPromise = null;
+function ensurePyodide(){
+  if (pyodideInstance) return Promise.resolve(pyodideInstance);
+  if (!pyodideLoadPromise){
+    pyodideLoadPromise = window.loadPyodide().then(py => { pyodideInstance = py; return py; });
+  }
+  return pyodideLoadPromise;
 }
+// Start loading in the background as soon as the page opens, so it's likely ready by submit time.
+if (typeof window.loadPyodide === 'function'){ ensurePyodide().catch(() => {}); }
 
-function isLinkedListPattern(code){
-  return /insert_head/.test(code) && /insert_tail/.test(code) && /delete_value/.test(code) && /to_list/.test(code);
-}
+const PY_TRACER_WRAPPER = `
+import sys, json, linecache, traceback
 
-function simulateLinkedList(calls){
-  let arr = [];
-  const trace = [];
-  calls.forEach(c => {
-    if (c.type === 'init'){
-      arr = [];
-      trace.push({ op:'init', desc:`${c.var} = ${c.cls}()`, state:[...arr] });
-    } else if (c.type === 'call'){
-      const n = Number(c.arg);
-      if (c.method === 'insert_head'){ arr.unshift(n); trace.push({ op:'insert_head', arg:c.arg, state:[...arr] }); }
-      else if (c.method === 'insert_tail'){ arr.push(n); trace.push({ op:'insert_tail', arg:c.arg, state:[...arr] }); }
-      else if (c.method === 'delete_value'){
-        const idx = arr.indexOf(n);
-        const found = idx !== -1;
-        if (found) arr.splice(idx, 1);
-        trace.push({ op:'delete_value', arg:c.arg, found, state:[...arr] });
-      } else if (c.method === 'to_list'){
-        trace.push({ op:'to_list', state:[...arr] });
-      }
-    } else if (c.type === 'print'){
-      trace.push({ op:'print', desc:c.raw, state:[...arr] });
-    }
-  });
-  return trace;
-}
+__trace__ = []
+__MAX_STEPS__ = 60
 
-function renderRealInputFlow(code){
+def __tracer__(frame, event, arg):
+    if event == 'line' and len(__trace__) < __MAX_STEPS__ and frame.f_code.co_filename == '<usercode>':
+        src = linecache.getline('<usercode>', frame.f_lineno).rstrip()
+        snap = {}
+        for k, v in list(frame.f_locals.items()):
+            if k.startswith('__'):
+                continue
+            try:
+                if isinstance(v, (int, float, str, bool)) or v is None:
+                    snap[k] = repr(v)
+                elif isinstance(v, (list, tuple, dict, set)):
+                    r = repr(v)
+                    snap[k] = r if len(r) < 100 else r[:97] + '...'
+                else:
+                    snap[k] = '<' + type(v).__name__ + '>'
+            except Exception:
+                snap[k] = '<unrepr>'
+        __trace__.append({'line': frame.f_lineno, 'src': src, 'vars': snap})
+    return __tracer__
+
+class __Capture__:
+    def __init__(self):
+        self.lines = []
+        self.buf = ''
+    def write(self, s):
+        self.buf += s
+        NL = chr(10)
+        while NL in self.buf:
+            line, self.buf = self.buf.split(NL, 1)
+            self.lines.append(line)
+    def flush(self):
+        pass
+
+__cap__ = __Capture__()
+__old_stdout__ = sys.stdout
+__error__ = None
+try:
+    linecache.cache['<usercode>'] = (len(__user_code__), None, __user_code__.splitlines(True), '<usercode>')
+    __compiled__ = compile(__user_code__, '<usercode>', 'exec')
+    sys.stdout = __cap__
+    sys.settrace(__tracer__)
+    exec(__compiled__, {'__name__': '__main__'})
+except Exception as e:
+    __error__ = ''.join(traceback.format_exception_only(type(e), e)).strip()
+finally:
+    sys.settrace(None)
+    sys.stdout = __old_stdout__
+    if __cap__.buf:
+        __cap__.lines.append(__cap__.buf)
+
+json.dumps({'trace': __trace__, 'stdout': __cap__.lines, 'error': __error__, 'truncated': len(__trace__) >= __MAX_STEPS__})
+`;
+
+async function renderRealInputFlow(code){
   const el = document.getElementById('realflow-content');
 
-  if (!isLinkedListPattern(code)){
-    el.innerHTML = `
-      <div class="flow-card">
-        <div class="source-badge local">📐 Deterministic simulation (no AI)</div>
-        <div class="rf-fallback">
-          This tab runs a real, built-in simulator for singly-linked-list CRUD code (insert_head / insert_tail / delete_value / to_list),
-          tracing your actual <code>__main__</code> values exactly the way Python would.<br><br>
-          Your current code doesn't match that pattern, so there's nothing to simulate here yet — check the
-          <b>🗺️ Flowchart</b> tab instead for an AI-estimated trace of this code.
-        </div>
-      </div>
-    `;
+  if (/\binput\s*\(/.test(code)){
+    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">This code calls <code>input()</code>, which needs a live keyboard — that isn't available in this trace. Replace <code>input()</code> calls with fixed example values (or add an <code>if __name__ == "__main__":</code> block that calls your functions directly) to see the real trace.</div></div>`;
     return;
   }
 
-  const calls = extractMainCalls(code);
-  if (!calls.length){
-    el.innerHTML = `
-      <div class="flow-card">
-        <div class="source-badge local">📐 Deterministic simulation (no AI)</div>
-        <div class="rf-fallback">This looks like linked-list code, but no <code>if __name__ == "__main__":</code> example block was found to pull real input values from. Add one (like creating the list and calling its methods) to see the real trace.</div>
-      </div>
-    `;
+  el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="state-msg">🐍 Starting a real Python runtime in your browser (first run only takes a few seconds)...</div></div>`;
+
+  let py;
+  try {
+    py = await ensurePyodide();
+  } catch (e){
+    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">Couldn't start the in-browser Python runtime (it needs to download from a CDN, so it may be blocked in this preview). Try opening the saved HTML file directly in a browser, or check the 🗺️ Flowchart tab for an AI-estimated trace instead.</div></div>`;
     return;
   }
 
-  const trace = simulateLinkedList(calls);
+  let resultJson;
+  try {
+    py.globals.set('__user_code__', code);
+    resultJson = await py.runPythonAsync(PY_TRACER_WRAPPER);
+  } catch (e){
+    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="error-msg">😕 The Python runtime itself hit an error running this trace: ${escapeHtml(String(e))}</div></div>`;
+    return;
+  }
+
+  const result = JSON.parse(resultJson);
+
+  if (result.error){
+    el.innerHTML = `
+      <div class="flow-card">
+        <div class="source-badge local">📐 Real Python execution</div>
+        <h2 class="flow-title">Your code raised an error</h2>
+        <div class="error-msg">${escapeHtml(result.error)}</div>
+        ${result.trace.length ? `<div class="flow-note">💡 It ran ${result.trace.length} line(s) before failing — here's how far it got.</div>` : ''}
+      </div>
+    `;
+  }
+
   let html = rfNode('oval', 'Start') + rfArrow();
-
-  trace.forEach(t => {
-    if (t.op === 'init'){
-      html += rfNode('rect', t.desc, 'head = None', `list → [ ]`) + rfArrow();
-    } else if (t.op === 'insert_head'){
-      html += rfNode('parallelogram', `Enter value: ${t.arg}`) + rfArrow();
-      html += rfNode('rect', `insert_head(${t.arg})`, `new_node(${t.arg})\nnew_node.next = old head\nhead = new_node  (O(1))`, `list → [${t.state.join(', ')}]`) + rfArrow();
-    } else if (t.op === 'insert_tail'){
-      html += rfNode('parallelogram', `Enter value: ${t.arg}`) + rfArrow();
-      html += rfNode('rect', `insert_tail(${t.arg})`, `walk curr = curr.next\nuntil curr.next is None  (O(n))\ncurr.next = new_node(${t.arg})`, `list → [${t.state.join(', ')}]`) + rfArrow();
-    } else if (t.op === 'delete_value'){
-      html += rfNode('parallelogram', `Enter target: ${t.arg}`) + rfArrow();
-      html += rfDiamond(`Is ${t.arg} in the list?`) + rfArrow();
-      const yesHtml = rfNode('rect', 'Unlink the node', `prev.next = curr.next`, `list → [${t.state.join(', ')}]`);
-      const noHtml = rfNode('rect', 'Reach end of list', `return False\n(nothing removed)`);
-      html += rfBranch(yesHtml, noHtml, t.found) + rfArrow();
-    } else if (t.op === 'to_list'){
-      /* folded into the following print, skip standalone node */
-    } else if (t.op === 'print'){
-      html += rfNode('parallelogram', 'Print result', null, `Output → [${t.state.join(', ')}]`) + rfArrow();
-    }
+  result.trace.forEach(t => {
+    const kind = classifyLine(t.src);
+    if (kind === 'skip') return;
+    const varsText = Object.entries(t.vars || {}).map(([k, v]) => `${k}=${v}`).join(', ');
+    const label = t.src.trim().slice(0, 70);
+    if (kind === 'decision') html += rfNode('diamond', label, null, varsText) + rfArrow();
+    else if (kind === 'io') html += rfNode('parallelogram', label, null, varsText) + rfArrow();
+    else html += rfNode('rect', label, kind === 'return' ? 'returns' : null, varsText) + rfArrow();
   });
-
   html += rfNode('oval', 'Stop');
+
+  const outputHtml = result.stdout.length
+    ? `<div class="trace-divider"><h3 class="trace-title">📤 Real program output</h3><div class="memory">${escapeHtml(result.stdout.join('\n'))}</div></div>`
+    : '';
 
   el.innerHTML = `
     <div class="flow-card">
-      <div class="source-badge local">📐 Deterministic simulation — traced from your real __main__ input, no AI needed</div>
+      <div class="source-badge local">📐 Real Python execution — this is your actual code, actually run, in-browser</div>
       <h2 class="flow-title">Real Input Flow</h2>
-      <p class="flow-subtitle">Every value below was actually computed by re-running your program's own example, step by step.</p>
+      <p class="flow-subtitle">Every box below is a real line your program executed, with the real variable values at that moment.</p>
+      ${result.error ? `<div class="error-msg" style="margin-bottom:16px;">😕 ${escapeHtml(result.error)}</div>` : ''}
       <div class="flowchart">${html}</div>
+      ${result.truncated ? `<div class="flow-note">💡 Showing the first 60 executed lines — loops/recursion beyond that were cut off to keep this readable.</div>` : ''}
+      ${outputHtml}
     </div>
   `;
 }
@@ -641,7 +669,7 @@ async function explainCode(){
   submitBtn.disabled = true;
 
   const analysis = analyzeCode(code);
-  renderRealInputFlow(code);
+  renderRealInputFlow(code).catch(() => {});
 
   try {
     const data = await callAI(code);
