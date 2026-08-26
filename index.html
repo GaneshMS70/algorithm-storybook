@@ -3,427 +3,663 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Stops the 404 favicon error in your Network tab -->
-<link rel="icon" href="data:,">
-<title>Pro Execution Tracer & Flowchart</title>
-
-<!-- Pyodide for Browser Python Engine -->
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
-<!-- Mermaid for Flowchart Generation -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+<title>Algorithm Storybook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg-main: #0d1117;
-    --bg-panel: #161b22;
-    --bg-card: #21262d;
-    --border: #30363d;
-    --text-main: #c9d1d9;
-    --text-muted: #8b949e;
-    --blue: #58a6ff;
-    --green: #2ea043;
-    --red: #f85149;
-    --purple: #bc8cff;
-    --orange: #ffa657;
-    --font-code: 'JetBrains Mono', monospace;
-    --font-ui: 'Inter', sans-serif;
+  :root{
+    --cream:#F6F2E8; --paper:#FFFFFF; --ink:#2B2A28; --ink-soft:#6B6558;
+    --coral:#E2653F; --coral-soft:#FBE3D8; --sky:#3F7FA6; --sky-soft:#DDEAF1;
+    --gold:#E4AC3E; --gold-soft:#FBEFD3; --sage:#4C8F68; --sage-soft:#E1F0E5;
+    --violet:#7B6BB0; --violet-soft:#EAE5F5; --line:#E4DCC9;
   }
-  
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg-main); color: var(--text-main); font-family: var(--font-ui); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Nunito',sans-serif; color:var(--ink);
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px),
+      var(--cream);
+    background-size:28px 28px, 28px 28px, 100% 100%;
+    min-height:100vh;
+  }
+  .wrap{max-width:780px;margin:0 auto;padding:32px 20px 80px;}
+  header{text-align:center;margin-bottom:22px;}
+  header .kicker{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--ink-soft);text-transform:uppercase;}
+  header h1{font-family:'Kalam',cursive;font-size:34px;margin:6px 0 4px;color:var(--coral);}
+  header p{margin:0;color:var(--ink-soft);font-size:14px;}
 
-  header { background: var(--bg-panel); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
-  h1 { font-size: 18px; color: var(--text-main); font-weight: 600; }
-  h1 span { font-size: 12px; color: var(--text-muted); font-family: var(--font-code); margin-left: 12px; }
+  .tabs{display:flex;gap:5px;background:var(--paper);border:2px solid var(--ink);border-radius:14px;padding:5px;margin-bottom:20px;box-shadow:3px 3px 0 var(--ink);flex-wrap:wrap;}
+  .tab{flex:1 1 auto;min-width:80px;padding:10px 6px;text-align:center;border-radius:10px;font-family:'Kalam',cursive;font-size:13.5px;font-weight:700;cursor:pointer;color:var(--ink-soft);transition:background .15s,color .15s;user-select:none;}
+  .tab.active{background:var(--coral);color:#fff;}
+  .tab:not(.active):hover{background:var(--coral-soft);}
+  .panel{display:none;} .panel.active{display:block;}
 
-  .layout { display: flex; flex: 1; height: calc(100vh - 50px); }
+  .card{background:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:22px;box-shadow:4px 4px 0 var(--ink);}
+  textarea{width:100%;min-height:220px;resize:vertical;font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.6;padding:16px;border:2px solid var(--line);border-radius:10px;background:#FCFAF4;color:var(--ink);}
+  textarea:focus{outline:none;border-color:var(--sky);}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap;}
+  .hint{font-size:12.5px;color:var(--ink-soft);}
 
-  /* Left Panel: Editor & Info */
-  .editor-pane { width: 40%; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--bg-main); }
-  .pane-header { padding: 10px 16px; background: var(--bg-panel); border-bottom: 1px solid var(--border); font-family: var(--font-code); font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
-  
-  textarea { flex: 1; width: 100%; background: var(--bg-main); color: var(--text-main); font-family: var(--font-code); font-size: 13.5px; line-height: 1.5; padding: 16px; border: none; outline: none; resize: none; white-space: pre; }
-  
-  .tech-stack-info { background: #010409; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-  .tech-stack-info strong { color: var(--blue); }
+  button.go{font-family:'Kalam',cursive;font-size:17px;font-weight:700;color:#fff;background:var(--coral);border:2px solid var(--ink);border-radius:10px;padding:11px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .1s;}
+  button.go:hover{transform:translate(-1px,-1px);}
+  button.go:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink);}
+  button.go:disabled{opacity:.6;cursor:default;transform:none;}
 
-  .btn-run { background: var(--green); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-ui); font-size: 13px; }
-  .btn-run:hover { opacity: 0.8; }
-  .btn-run:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+  .info-link{font-size:12.5px;color:var(--sky);cursor:pointer;text-decoration:underline;background:none;border:none;padding:0;font-family:'Nunito',sans-serif;}
+  .info-panel{margin-top:14px;padding:14px 16px;background:var(--sky-soft);border-radius:10px;font-size:12.5px;line-height:1.6;color:var(--ink);display:none;}
+  .info-panel.open{display:block;}
+  .info-panel b{color:var(--sky);}
 
-  /* Right Panel: Output & Trace */
-  .right-pane { width: 60%; display: flex; flex-direction: column; background: var(--bg-main); }
-  
-  .tabs { display: flex; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
-  .tab { padding: 12px 20px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; }
-  .tab.active { color: var(--blue); border-bottom: 2px solid var(--blue); }
+  .state-msg{text-align:center;padding:40px 10px;font-family:'Kalam',cursive;font-size:18px;color:var(--ink-soft);}
+  .error-msg{text-align:center;padding:20px;font-size:14px;color:var(--coral);background:var(--coral-soft);border-radius:10px;border:2px solid var(--coral);}
 
-  .panel-content { flex: 1; overflow-y: auto; padding: 20px; display: none; }
-  .panel-content.active { display: block; }
+  .source-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;margin-bottom:14px;}
+  .source-badge.ai{background:var(--sage-soft);color:var(--sage);border:1.5px solid var(--sage);}
+  .source-badge.local{background:var(--gold-soft);color:#8a6a1f;border:1.5px solid var(--gold);}
 
-  /* Console Output */
-  .console-box { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 16px; font-family: var(--font-code); font-size: 13px; color: var(--text-main); white-space: pre-wrap; min-height: 100px; }
+  .level-toggle{display:inline-flex;border:2px solid var(--ink);border-radius:10px;overflow:hidden;margin-bottom:16px;float:right;}
+  .level-btn{font-family:'Kalam',cursive;font-size:13px;font-weight:700;padding:7px 12px;background:#fff;color:var(--ink-soft);cursor:pointer;border:none;}
+  .level-btn.active{background:var(--violet);color:#fff;}
+  .level-btn:disabled{opacity:.5;cursor:not-allowed;}
 
-  /* Flowchart container */
-  .mermaid-container { background: white; border-radius: 8px; padding: 20px; text-align: center; min-height: 300px; display: flex; justify-content: center; align-items: flex-start; overflow: auto; }
+  .story-title{font-family:'Kalam',cursive;font-size:26px;color:var(--coral);margin:0 0 4px;clear:both;}
+  .analogy{font-size:15px;color:var(--ink-soft);margin:0 0 12px;font-style:italic;}
+  .algo-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--ink);background:var(--gold-soft);border:2px solid var(--gold);border-radius:20px;padding:5px 14px;margin-bottom:22px;}
 
-  /* Trace Timeline */
-  .trace-step { display: flex; margin-bottom: 20px; position: relative; }
-  .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-panel); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--font-code); font-size: 11px; font-weight: bold; color: var(--text-muted); z-index: 2; flex-shrink: 0; margin-top: 4px;}
-  .trace-step::after { content: ''; position: absolute; left: 13px; top: 32px; bottom: -20px; width: 2px; background: var(--border); z-index: 1; }
-  .trace-step:last-child::after { display: none; }
-  
-  .step-box { margin-left: 16px; flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .step-code { background: #1a1f26; padding: 10px 14px; font-family: var(--font-code); font-size: 13px; color: var(--orange); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;}
-  .step-meta { color: var(--text-muted); font-size: 11px; }
-  .step-locals { padding: 12px 14px; font-family: var(--font-code); font-size: 12.5px; }
-  
-  .var-line { margin-bottom: 6px; word-break: break-all; }
-  .var-line:last-child { margin-bottom: 0; }
-  .var-name { color: var(--blue); font-weight: 600; }
-  .var-val { color: var(--purple); }
+  .step{position:relative;background:var(--paper);border:2px solid var(--ink);border-left:8px solid var(--sky);border-radius:12px;padding:16px 18px 16px 20px;margin-bottom:16px;box-shadow:3px 3px 0 var(--ink);}
+  .step.end{border-left-color:var(--sage);}
+  .step-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .step-num{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--sky);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;}
+  .step.end .step-num{background:var(--sage);}
+  .step-name{font-family:'Kalam',cursive;font-size:18px;font-weight:700;}
+  .step-explain{font-size:14.5px;line-height:1.55;margin:0 0 12px;color:var(--ink);}
+  .pointers{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .chip{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--sky-soft);color:var(--sky);border:1.5px solid var(--sky);border-radius:6px;padding:3px 8px;font-weight:700;}
+  .step.end .chip{background:var(--sage-soft);color:var(--sage);border-color:var(--sage);}
+  .memory{background:#20242B;color:#DCE6EE;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.55;border-radius:8px;padding:12px 14px;white-space:pre;overflow-x:auto;}
+  .memory-label{font-size:10.5px;letter-spacing:1.5px;color:var(--ink-soft);text-transform:uppercase;margin-bottom:5px;font-family:'JetBrains Mono',monospace;}
 
-  .empty { text-align: center; color: var(--text-muted); font-size: 14px; margin-top: 40px; }
-  .error-text { color: var(--red); font-family: var(--font-code); font-size: 13px; }
+  .new-btn{display:block;margin:26px auto 0;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:10px;padding:9px 20px;font-family:'Kalam',cursive;font-size:15px;font-weight:700;cursor:pointer;box-shadow:3px 3px 0 var(--ink);}
+  .new-btn:hover{background:var(--gold-soft);}
+
+  .flow-card{background:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:22px;box-shadow:4px 4px 0 var(--ink);}
+  .flow-title{font-family:'Kalam',cursive;font-size:26px;color:var(--coral);margin:0 0 4px;}
+  .flow-subtitle{color:var(--ink-soft);font-size:13px;margin:0 0 16px;}
+  .flowchart{display:flex;flex-direction:column;align-items:center;gap:0;}
+  .flow-node{width:min(100%,520px);background:#fff;border:2px solid var(--ink);border-radius:12px;padding:14px 16px;text-align:center;box-shadow:3px 3px 0 var(--ink);position:relative;}
+  .flow-node.start,.flow-node.end{border-radius:28px;background:var(--sky-soft);}
+  .flow-node.process{background:var(--gold-soft);}
+  .flow-node.condition{width:min(100%,420px);background:var(--coral-soft);}
+  .flow-label{font-family:'Kalam',cursive;font-weight:700;font-size:18px;color:var(--ink);}
+  .flow-code{display:block;margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);white-space:pre-wrap;}
+  .flow-arrow{min-height:34px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:var(--ink);}
+  .flow-branch{width:min(100%,620px);display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+  .flow-branch-col{display:flex;flex-direction:column;align-items:center;}
+  .flow-branch-label{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border:1px solid var(--line);border-radius:999px;background:#fff;margin-bottom:8px;}
+  .flow-note{margin-top:18px;padding:12px 14px;border-left:5px solid var(--coral);background:#fff;border-radius:8px;color:var(--ink-soft);font-size:13px;}
+  .flow-empty{text-align:center;padding:28px 16px;color:var(--ink-soft);}
+  .trace-divider{margin:24px 0 16px;border-top:2px dashed var(--line);padding-top:16px;}
+  .trace-title{font-family:'Kalam',cursive;font-size:19px;color:var(--sky);margin:0 0 4px;}
+  .trace-sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;}
+
+  .used-card{background:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:22px;box-shadow:4px 4px 0 var(--ink);margin-bottom:16px;}
+  .used-title{font-family:'Kalam',cursive;font-size:22px;color:var(--violet);margin:0 0 10px;}
+  .concept-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+  .concept-chip{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:var(--violet-soft);color:var(--violet);border:1.5px solid var(--violet);border-radius:20px;padding:5px 12px;}
+  .used-para{font-size:14px;line-height:1.6;margin:10px 0 0;}
+  .world-list{margin:8px 0 0;padding-left:20px;font-size:14px;line-height:1.7;}
+  .used-empty{text-align:center;padding:28px 16px;color:var(--ink-soft);}
+
+  @media(max-width:600px){.flow-branch{grid-template-columns:1fr;} .level-toggle{float:none;margin-bottom:12px;}}
+
+  .rf-node-wrap{width:min(100%,440px);margin:0 auto;text-align:center;}
+  .rf-oval{display:inline-block;background:#fff;border:2px solid var(--sky);border-radius:40px;padding:10px 26px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;box-shadow:2px 2px 0 var(--ink);}
+  .rf-rect{background:#fff;border:2px solid var(--sky);border-radius:4px;padding:10px 16px;box-shadow:2px 2px 0 var(--ink);}
+  .rf-rect .rf-title{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--ink);}
+  .rf-rect .rf-sub{font-size:11.5px;color:var(--ink-soft);white-space:pre-wrap;margin-top:4px;font-family:'JetBrains Mono',monospace;}
+  .rf-parallelogram{display:inline-block;background:#fff;border:2px solid var(--sky);padding:10px 34px;transform:skewX(-16deg);box-shadow:2px 2px 0 var(--ink);}
+  .rf-parallelogram .rf-inner{display:block;transform:skewX(16deg);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12.5px;}
+  .rf-diamond-outer{width:190px;height:190px;position:relative;margin:0 auto;}
+  .rf-diamond-shape{position:absolute;top:30px;left:30px;width:130px;height:130px;border:2px solid var(--sky);background:#fff;transform:rotate(45deg);box-shadow:2px 2px 0 var(--ink);}
+  .rf-diamond-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;color:var(--ink);}
+  .rf-value{margin-top:8px;display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--sky-soft);color:var(--sky);border:1px solid var(--sky);border-radius:6px;padding:3px 10px;}
+  .rf-arrow{height:26px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ink);}
+  .rf-branch-col.dim{opacity:.35;}
+  .rf-fallback{text-align:center;padding:24px 16px;color:var(--ink-soft);font-size:13.5px;line-height:1.6;}
 </style>
 </head>
 <body>
-
+<div class="wrap">
   <header>
-    <h1>Code Decoder & Tracer <span>100% Free / No API / Real-time Execution</span></h1>
-    <span style="font-size:12px; color:var(--text-muted);">Powered by WebAssembly</span>
+    <div class="kicker">paste it &middot; run it &middot; understand it</div>
+    <h1>🎬 Algorithm Storybook</h1>
+    <p>Paste Python code — get a story, a flowchart with real values, and what it's built from</p>
   </header>
 
-  <div class="layout">
-    <!-- EDITOR -->
-    <div class="editor-pane">
-      <div class="pane-header">
-        <span>source_code.py</span>
-        <button class="btn-run" id="btn-run">▶ Run Code</button>
+  <div class="tabs">
+    <div class="tab active" data-tab="paste">📝 Paste</div>
+    <div class="tab" data-tab="story">🎬 Story</div>
+    <div class="tab" data-tab="flow">🗺️ Flowchart</div>
+    <div class="tab" data-tab="used">🧠 What's Used</div>
+    <div class="tab" data-tab="realflow">🔢 Real Input Flow</div>
+  </div>
+
+  <div class="panel active" id="panel-paste">
+    <div class="card">
+      <textarea id="code-input" spellcheck="false">def gcd(r, s):
+    while s != 0:
+        if r < s:
+            r, s = s, r
+        r = r - s
+    return r</textarea>
+      <div class="row">
+        <span class="hint">Any Python snippet works — loops, recursion, sorting, linked lists...</span>
+        <button class="go" id="submit-btn">Explain it like a story ✨</button>
       </div>
-      <textarea id="code-input" spellcheck="false">class Node:
-    def __init__(self, val=0, next=None):
-        self.val = val
-        self.next = next
-
-class SinglyLinkedList:
-    def __init__(self):
-        self.head = None
-
-    def insert_head(self, val: int) -> None:
-        new_node = Node(val, self.head)
-        self.head = new_node
-
-    def insert_tail(self, val: int) -> None:
-        new_node = Node(val)
-        if not self.head:
-            self.head = new_node
-            return
-        curr = self.head
-        while curr.next:
-            curr = curr.next
-        curr.next = new_node
-
-    def delete_value(self, target: int) -> bool:
-        if not self.head:
-            return False
-        if self.head.val == target:
-            self.head = self.head.next
-            return True
-        
-        curr = self.head
-        while curr.next and curr.next.val != target:
-            curr = curr.next
-            
-        if curr.next:
-            curr.next = curr.next.next
-            return True
-        return False
-
-    def to_list(self) -> list:
-        res, curr = [], self.head
-        while curr:
-            res.append(curr.val)
-            curr = curr.next
-        return res
-
-if __name__ == "__main__":
-    # Real execution block - the tracer will follow this step-by-step
-    sll = SinglyLinkedList()
-    sll.insert_head(20)
-    sll.insert_head(10)
-    sll.insert_tail(30)
-    print("Initial:", sll.to_list())
-    sll.delete_value(20)
-    print("After Deleting 20:", sll.to_list())</textarea>
-      
-      <!-- Educational Panel -->
-      <div class="tech-stack-info">
-        <strong>How it works (100% Local Browser Execution):</strong><br>
-        1. <strong>Pyodide:</strong> A full Python environment running in WebAssembly. No servers or APIs are used.<br>
-        2. <strong>sys.settrace:</strong> A built-in Python debugger module that intercepts memory state on every single line of code executed.<br>
-        3. <strong>Mermaid.js:</strong> Maps your executed lines into a visual flowchart. It auto-detects <code>if</code> and <code>while</code> loops to draw decision diamonds.
-      </div>
-    </div>
-
-    <!-- OUTPUT / TRACE / FLOWCHART -->
-    <div class="right-pane">
-      <div class="tabs">
-        <div class="tab active" data-target="trace">🔍 Line-by-Line Trace</div>
-        <div class="tab" data-target="flowchart">🔀 Dynamic Flowchart</div>
-        <div class="tab" data-target="console">🖥️ Console Output</div>
-      </div>
-
-      <!-- Trace Panel -->
-      <div class="panel-content active" id="trace">
-        <div class="empty">Click "Run Code" to trace memory and variables.</div>
-      </div>
-
-      <!-- Flowchart Panel -->
-      <div class="panel-content" id="flowchart">
-        <div class="empty">Click "Run Code" to generate logic flowchart.</div>
-      </div>
-
-      <!-- Console Panel -->
-      <div class="panel-content" id="console">
-        <div class="empty">Console output will appear here.</div>
+      <button class="info-link" id="info-toggle">ℹ️ What does this tool use?</button>
+      <div class="info-panel" id="info-panel">
+        Built with plain <b>HTML / CSS / JS</b> — no server, no backend, nothing to install.<br>
+        Fonts: <b>Kalam</b>, <b>Nunito</b>, <b>JetBrains Mono</b> (Google Fonts).<br>
+        AI explanations come from <b>Pollinations.ai's free text API</b> — a public, key-free endpoint that runs a
+        request straight from your browser. It's free and requires no sign-up, but as a public service it can
+        occasionally be slow, rate-limited, or unreachable from certain networks/sandboxes.<br>
+        Because of that, this tool always also runs a small <b>offline analyzer</b> written in plain JavaScript
+        (pattern-matching on your code) so you get a complete result either way — a badge on every tab shows
+        whether you're looking at the 🤖 AI version or the 📦 offline version.
       </div>
     </div>
   </div>
 
+  <div class="panel" id="panel-story">
+    <div id="story-content"><div class="state-msg">Paste some code and hit "Explain it like a story" to begin 📖</div></div>
+  </div>
+
+  <div class="panel" id="panel-flow">
+    <div id="flow-content"><div class="flow-empty">Paste your code and submit to build the flowchart 🗺️</div></div>
+  </div>
+
+  <div class="panel" id="panel-used">
+    <div id="used-content"><div class="used-empty">Paste your code and submit to see what it's built from 🧠</div></div>
+  </div>
+
+  <div class="panel" id="panel-realflow">
+    <div id="realflow-content"><div class="rf-fallback">Paste code that has a runnable example (an <code>if __name__ == "__main__":</code> block) and submit to trace it with its real values 🔢</div></div>
+  </div>
+</div>
+
 <script>
-  // Initialize Mermaid with a clean theme
-  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+const tabs = document.querySelectorAll('.tab');
+const panels = { paste: document.getElementById('panel-paste'), story: document.getElementById('panel-story'), flow: document.getElementById('panel-flow'), used: document.getElementById('panel-used'), realflow: document.getElementById('panel-realflow') };
+function switchTab(name){
+  tabs.forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+  Object.entries(panels).forEach(([k,p]) => p.classList.toggle('active', k === name));
+}
+tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+document.getElementById('info-toggle').addEventListener('click', () => document.getElementById('info-panel').classList.toggle('open'));
 
-  // Tab switching logic
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.target).classList.add('active');
-    });
+const submitBtn = document.getElementById('submit-btn');
+const storyContent = document.getElementById('story-content');
+const flowContent = document.getElementById('flow-content');
+const usedContent = document.getElementById('used-content');
+
+let lastData = null;
+let lastSource = 'local';
+let level = 'kid';
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+/* ---------- STATIC CODE ANALYSIS (always available, no AI needed) ---------- */
+
+function analyzeCode(code){
+  const c = code;
+  const lower = c.toLowerCase();
+  const concepts = [];
+  const imports = [...c.matchAll(/^\s*(?:import|from)\s+([a-zA-Z0-9_\.]+)/gm)].map(m => m[1]);
+  imports.forEach(i => concepts.push('import: ' + i));
+
+  if (/\bdef\s+\w+/.test(c)) concepts.push('function definition');
+  const funcNames = [...c.matchAll(/\bdef\s+(\w+)\s*\(/g)].map(m => m[1]);
+  funcNames.forEach(name => {
+    const bodyCallPattern = new RegExp('\\b' + name + '\\s*\\(');
+    const occurrences = (c.match(new RegExp('\\b' + name + '\\s*\\(', 'g')) || []).length;
+    if (occurrences > 1) concepts.push('recursion (' + name + ')');
   });
-
-  let pyodideReady = false;
-  let pyodide = null;
-
-  async function loadEngine() {
-    document.getElementById('btn-run').innerText = "⏳ Loading Python Engine...";
-    document.getElementById('btn-run').disabled = true;
-    try {
-      pyodide = await loadPyodide();
-      pyodideReady = true;
-      document.getElementById('btn-run').innerText = "▶ Run Code";
-      document.getElementById('btn-run').disabled = false;
-    } catch(err) {
-      document.getElementById('btn-run').innerText = "Engine Failed";
-      console.error(err);
-    }
-  }
-  loadEngine();
-
-  // Python Script to inject for tracing
-  const tracerScript = `
-import sys
-import json
-import io
-import traceback
-
-def __serialize_obj(obj, depth=0):
-    # Cap recursion depth at 1 to prevent circular linked list crashes
-    if depth > 1: return "..."
-    
-    if isinstance(obj, (int, float, str, bool, type(None))): return repr(obj)
-    if isinstance(obj, list): return "[" + ", ".join(__serialize_obj(i, depth+1) for i in obj) + "]"
-    
-    # Safely extract class attributes (like Node.val and Node.next)
-    if hasattr(obj, '__dict__'):
-        attrs = []
-        for k, v in obj.__dict__.items():
-            if not k.startswith('_'):
-                attrs.append(f"{k}={__serialize_obj(v, depth+1)}")
-        return f"<{type(obj).__name__} {', '.join(attrs)}>"
-        
-    return f"<{type(obj).__name__}>"
-
-def run_and_trace(code_str):
-    trace_log = []
-    
-    # Capture print() statements
-    captured_out = io.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = captured_out
-    
-    def tracer(frame, event, arg):
-        # Only trace the actual executed lines in the user code
-        if frame.f_code.co_filename == "<string>" and event == 'line':
-            locs = {}
-            for k, v in frame.f_locals.items():
-                # Ignore modules and functions to keep output clean
-                if not k.startswith('__') and type(v).__name__ not in ('module', 'function', 'type'):
-                    locs[k] = __serialize_obj(v)
-                    
-            trace_log.append({
-                "line": frame.f_lineno,
-                "func": frame.f_code.co_name,
-                "locals": locs
-            })
-        return tracer
-
-    error_msg = None
-    try:
-        sys.settrace(tracer)
-        exec(code_str, {"__name__": "__main__"})
-        sys.settrace(None)
-    except Exception as e:
-        sys.settrace(None)
-        error_msg = traceback.format_exc()
-
-    sys.stdout = old_stdout
-    
-    return json.dumps({
-        "trace": trace_log,
-        "stdout": captured_out.getvalue(),
-        "error": error_msg
-    })
-`;
-
-  document.getElementById('btn-run').addEventListener('click', async () => {
-    if (!pyodideReady) return;
-    
-    const userCode = document.getElementById('code-input').value;
-    const codeLines = userCode.split(/\r?\n/);
-    
-    document.getElementById('btn-run').innerText = "Running...";
-    
-    try {
-      await pyodide.runPythonAsync(tracerScript);
-      pyodide.globals.set("user_code", userCode);
-      const jsonRes = await pyodide.runPythonAsync(`run_and_trace(user_code)`);
-      const result = JSON.parse(jsonRes);
-      
-      renderTrace(result.trace, codeLines);
-      renderConsole(result.stdout, result.error);
-      
-      // We explicitly wait for the flowchart to render
-      await renderFlowchart(result.trace, codeLines);
-      
-    } catch (e) {
-      renderConsole("", e.message);
-    }
-    
-    document.getElementById('btn-run').innerText = "▶ Run Code";
+  if (/\bfor\s+.+\bin\b/.test(c)) concepts.push('for loop');
+  if (/\bwhile\b/.test(c)) concepts.push('while loop');
+  if (/\bclass\s+\w+/.test(c)) concepts.push('class / OOP');
+  if (/\[.*for .* in .*\]/.test(c)) concepts.push('list comprehension');
+  if (/\{.*:.*\}/.test(c) && /dict\(|:\s*\w/.test(c)) concepts.push('dictionary');
+  if (/\bset\(|\{\s*[^:}\n]+\s*\}/.test(c)) concepts.push('set');
+  if (/\[\s*\]|\blist\(/.test(c)) concepts.push('list');
+  if (/\(\s*\)|,\s*\)/.test(c) && /\btuple\(/.test(c)) concepts.push('tuple');
+  if (/\.append\(|\.pop\(\)/.test(c)) concepts.push('stack/queue pattern (append/pop)');
+  if (/\.next\b/.test(c)) concepts.push('linked list traversal');
+  if (/\btry:|except\b/.test(c)) concepts.push('exception handling');
+  if (/\blambda\b/.test(c)) concepts.push('lambda function');
+  if (/\byield\b/.test(c)) concepts.push('generator (yield)');
+  ['len','range','sorted','sum','min','max','enumerate','zip','map','filter','print','input','abs','round'].forEach(fn => {
+    if (new RegExp('\\b' + fn + '\\s*\\(').test(c)) concepts.push('built-in: ' + fn + '()');
   });
+  const unique = [...new Set(concepts)];
+  return { concepts: unique, hasImports: imports.length > 0 };
+}
 
-  function escapeHTML(str) {
-    return String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+/* ---------- STORY TAB ---------- */
+
+function pickText(obj, key){
+  if (!obj) return '';
+  if (level === 'pro' && obj[key + '_pro']) return obj[key + '_pro'];
+  if (obj[key + '_kid']) return obj[key + '_kid'];
+  return obj[key] || obj.explanation || '';
+}
+
+function renderStep(step, index, isEnd){
+  const pointers = (step.pointers || '').split('|').map(p => p.trim()).filter(Boolean).map(p => `<span class="chip">${escapeHtml(p)}</span>`).join('');
+  const explanation = pickText(step, 'explanation');
+  return `
+    <div class="step ${isEnd ? 'end' : ''}">
+      <div class="step-head">
+        <div class="step-num">${isEnd ? '🏁' : index}</div>
+        <div class="step-name">${escapeHtml(step.step_name || (isEnd ? 'End State' : 'Step'))}</div>
+      </div>
+      <p class="step-explain">${escapeHtml(explanation)}</p>
+      ${pointers ? `<div class="pointers">${pointers}</div>` : ''}
+      ${step.memory_picture ? `<div class="memory-label">memory picture</div><div class="memory">${escapeHtml(step.memory_picture)}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderStory(data, source){
+  lastData = data; lastSource = source;
+  const stepsHtml = (data.steps || []).map((s, i) => renderStep(s, i + 1, false)).join('');
+  const endHtml = data.end_state ? renderStep(data.end_state, 0, true) : '';
+  const badge = source === 'ai' ? `<div class="source-badge ai">🤖 AI-generated explanation</div>` : `<div class="source-badge local">📦 Offline built-in explanation</div>`;
+  const toggle = `
+    <div class="level-toggle">
+      <button class="level-btn ${level==='kid'?'active':''}" id="lvl-kid" ${source!=='ai'?'disabled title="Needs AI mode"':''}>👶 Simple</button>
+      <button class="level-btn ${level==='pro'?'active':''}" id="lvl-pro" ${source!=='ai'?'disabled title="Needs AI mode"':''}>🎓 Technical</button>
+    </div>
+  `;
+  storyContent.innerHTML = `
+    <div class="card">
+      ${toggle}${badge}
+      <h2 class="story-title">${escapeHtml(data.title || 'Your Algorithm')}</h2>
+      <p class="analogy">💡 ${escapeHtml(data.analogy || '')}</p>
+      ${data.algorithm_type ? `<div class="algo-badge">🧩 ${escapeHtml(data.algorithm_type)}</div>` : ''}
+      ${stepsHtml}${endHtml}
+    </div>
+    <button class="new-btn" id="back-btn">✏️ Try another snippet</button>
+  `;
+  document.getElementById('back-btn').addEventListener('click', () => switchTab('paste'));
+  if (source === 'ai'){
+    document.getElementById('lvl-kid').addEventListener('click', () => { level='kid'; renderStory(lastData, lastSource); });
+    document.getElementById('lvl-pro').addEventListener('click', () => { level='pro'; renderStory(lastData, lastSource); });
   }
+}
 
-  function renderConsole(stdout, error) {
-    let html = `<div class="console-box">${escapeHTML(stdout) || 'No print output.'}</div>`;
-    if (error) {
-      html += `<div class="console-box error-text" style="margin-top:10px;"><strong>Runtime Error:</strong><br>${escapeHTML(error)}</div>`;
-    }
-    document.getElementById('console').innerHTML = html;
+/* ---------- FLOWCHART TAB ---------- */
+
+function flowNodeHtml(node){
+  return `<div class="flow-node ${escapeHtml(node.type || 'process')}"><div class="flow-label">${escapeHtml(node.label || '')}</div>${node.code ? `<code class="flow-code">${escapeHtml(node.code)}</code>` : ''}</div>`;
+}
+
+function renderFlowchartAI(flowchart, title){
+  if (!flowchart || !flowchart.nodes || !flowchart.nodes.length){
+    renderFlow(document.getElementById('code-input').value);
+    return;
   }
+  const typeClass = { start:'start', end:'end', decision:'condition', action:'process', loop:'process' };
+  const nodesById = {};
+  flowchart.nodes.forEach(n => nodesById[n.id] = n);
+  const structuralHtml = flowchart.nodes.map((n, i) => {
+    const outs = (flowchart.edges || []).filter(e => e.from === n.id);
+    const branchText = outs.map(o => `${o.label ? o.label + ' → ' : '→ '}${(nodesById[o.to] || {}).label || o.to}`).join('\n');
+    return flowNodeHtml({ type: typeClass[n.type] || 'process', label: n.label, code: branchText }) + (i < flowchart.nodes.length - 1 ? `<div class="flow-arrow">↓</div>` : '');
+  }).join('');
+  const traceHtml = (flowchart.trace || []).map((t, i) => {
+    const label = (nodesById[t.node_id] || {}).label || t.node_id;
+    return `<div class="step"><div class="step-head"><div class="step-num">${i+1}</div><div class="step-name">${escapeHtml(label)}</div></div>${t.values ? `<div class="pointers"><span class="chip">${escapeHtml(t.values)}</span></div>` : ''}</div>`;
+  }).join('');
+  flowContent.innerHTML = `
+    <div class="flow-card">
+      <div class="source-badge ai">🤖 AI-generated flow + live trace</div>
+      <h2 class="flow-title">${escapeHtml(title || 'Algorithm')} — Flowchart</h2>
+      <p class="flow-subtitle">How the program is structured, decision by decision.</p>
+      <div class="flowchart">${structuralHtml}</div>
+      ${traceHtml ? `<div class="trace-divider"><h3 class="trace-title">🔎 Live trace with real input</h3><p class="trace-sub">${escapeHtml(flowchart.input_example ? 'Using input: ' + flowchart.input_example : 'One real run through the flow above')}</p>${traceHtml}</div>` : ''}
+    </div>
+  `;
+}
 
-  function renderTrace(trace, codeLines) {
-    if (!trace || trace.length === 0) {
-      document.getElementById('trace').innerHTML = `<div class="empty">No execution traced. Ensure you have an execution block (e.g., if __name__ == "__main__":)</div>`;
-      return;
-    }
+function detectFlow(code){
+  const c = code.replace(/\r/g, '').trim();
+  const lower = c.toLowerCase();
+  const lines = c.split('\n').map(x => x.trim()).filter(Boolean);
+  if ((lower.includes('gcd') || (lower.includes('return r') && lower.includes('while s'))) && lower.includes('while') && lower.includes('s')) {
+    return { title:"GCD — Step-by-Step Algorithm Flow", subtitle:"Follow the input → condition → loop → update → output path.",
+      nodes:[{type:"start",label:"INPUT",code:"r, s"},{type:"process",label:"Initialize",code:"Keep r and s as the current values."},{type:"condition",label:"Is s == 0?",code:"Check the stopping condition."}],
+      branches:{ yes:[{type:"end",label:"OUTPUT",code:"return r\nr is the GCD"}],
+        no:[{type:"condition",label:"Is r < s?",code:"Compare the two current values."},{type:"process",label:"If r < s",code:"Swap so r is the larger one."},{type:"process",label:"Subtract",code:"r = r - s"},{type:"loop",label:"LOOP BACK",code:"Check s == 0 again."}] },
+      note:"Each loop makes the numbers smaller until s becomes 0. The remaining r is the GCD." };
+  }
+  if ((lower.includes('linked list') || c.includes('.next')) && (lower.includes('reverse') || lower.includes('prev') || lower.includes('curr'))) {
+    return { title:"Reverse Linked List — Step-by-Step Flow", subtitle:"Save the next node, reverse one link, then move the pointers.",
+      nodes:[{type:"start",label:"INPUT",code:"head"},{type:"process",label:"Initialize pointers",code:"prev = None\ncurr = head"},{type:"condition",label:"Is curr None?",code:"while curr"}],
+      branches:{ yes:[{type:"end",label:"OUTPUT",code:"return prev\nprev is the new head"}],
+        no:[{type:"process",label:"Save next",code:"next_node = curr.next"},{type:"process",label:"Reverse link",code:"curr.next = prev"},{type:"process",label:"Move pointers",code:"prev = curr\ncurr = next_node"},{type:"loop",label:"LOOP BACK",code:"Check curr again"}] },
+      note:"Every iteration reverses exactly one arrow." };
+  }
+  if (lower.includes('for ') || lower.includes('while ')) {
+    const loopLine = lines.find(x => /^for\b|^while\b/.test(x)) || "loop condition";
+    const returnLine = lines.find(x => /^return\b/.test(x));
+    return { title:"Algorithm — Step-by-Step Flow", subtitle:"A generic flow built from the loop and return structure in your code.",
+      nodes:[{type:"start",label:"INPUT",code:"Program input"},{type:"process",label:"Initialize",code:"Set variables / starting state."},{type:"condition",label:"Loop condition?",code:loopLine}],
+      branches:{ yes:[{type:"process",label:"Process current item",code:"Execute the loop body."},{type:"process",label:"Update state",code:"Move to the next iteration."},{type:"loop",label:"LOOP BACK",code:"Check the condition again"}],
+        no:[{type:"end",label:"OUTPUT",code:returnLine || "Final result"}] },
+      note:"The loop repeats the same process until its condition becomes false." };
+  }
+  return { title:"Algorithm — Step-by-Step Flow", subtitle:"A simple execution flow based on the structure of your code.",
+    nodes:[{type:"start",label:"INPUT",code:"Program input"},{type:"process",label:"Read the code",code:lines.slice(0,2).join("\n") || "Python statements"},{type:"process",label:"Execute statements",code:"Follow the code top to bottom."},{type:"end",label:"OUTPUT",code:"Final value / result"}],
+    branches:null, note:"Connect the free AI helper for a live trace using your real input values." };
+}
 
-    let html = '';
-    
-    trace.forEach((step, idx) => {
-      const sourceLine = codeLines[step.line - 1] ? codeLines[step.line - 1].trim() : '(Line missing)';
-      
-      let locsHtml = '';
-      if(Object.keys(step.locals).length === 0){
-        locsHtml = `<div style="color:var(--text-muted); font-style:italic;">No local variables</div>`;
-      } else {
-        for(const [k, v] of Object.entries(step.locals)){
-          locsHtml += `<div class="var-line"><span class="var-name">${escapeHTML(k)}</span> = <span class="var-val">${escapeHTML(v)}</span></div>`;
-        }
+function renderFlow(code){
+  const flow = detectFlow(code);
+  let html = `<div class="flow-card"><div class="source-badge local">📦 Offline built-in structure</div><h2 class="flow-title">${escapeHtml(flow.title)}</h2><p class="flow-subtitle">${escapeHtml(flow.subtitle)}</p><div class="flowchart">`;
+  flow.nodes.forEach((node, index) => { html += flowNodeHtml(node); if (index < flow.nodes.length - 1) html += `<div class="flow-arrow">↓</div>`; });
+  if (flow.branches) {
+    html += `<div class="flow-arrow">↓</div><div class="flow-branch">
+      <div class="flow-branch-col"><div class="flow-branch-label">YES / TRUE</div>${flow.branches.yes.map((node,i) => flowNodeHtml(node) + (i < flow.branches.yes.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}</div>
+      <div class="flow-branch-col"><div class="flow-branch-label">NO / FALSE</div>${flow.branches.no.map((node,i) => flowNodeHtml(node) + (i < flow.branches.no.length-1 ? `<div class="flow-arrow">↓</div>` : '')).join('')}</div>
+    </div>`;
+  }
+  html += `</div><div class="flow-note">💡 ${escapeHtml(flow.note)}</div></div>`;
+  flowContent.innerHTML = html;
+}
+
+/* ---------- WHAT'S USED TAB ---------- */
+
+function renderUsed(data, analysis, source){
+  const chips = (analysis.concepts || []).map(c => `<span class="concept-chip">${escapeHtml(c)}</span>`).join('');
+  const aiPara = source === 'ai' && data.what_we_used ? `<p class="used-para">${escapeHtml(data.what_we_used)}</p>` : '';
+  const worldItems = (source === 'ai' && Array.isArray(data.real_world_uses) && data.real_world_uses.length)
+    ? data.real_world_uses.map(u => `<li>${escapeHtml(u)}</li>`).join('')
+    : `<li>Search this algorithm's name alongside "real world use case" once you know its name from the Story tab — most classic algorithms (sorting, searching, traversal) map directly onto real software problems.</li>`;
+  usedContent.innerHTML = `
+    <div class="used-card">
+      <div class="source-badge local">📦 Detected from your code (always on, no AI needed)</div>
+      <h2 class="used-title">🧩 Concepts &amp; building blocks found</h2>
+      <div class="concept-list">${chips || '<span class="hint">No specific patterns detected — this looks like straight-line code with no loops, recursion, or common built-ins.</span>'}</div>
+    </div>
+    <div class="used-card">
+      <div class="source-badge ${source === 'ai' ? 'ai' : 'local'}">${source === 'ai' ? '🤖 AI summary' : '📦 Offline summary'}</div>
+      <h2 class="used-title">📖 What this program is doing, in plain terms</h2>
+      ${aiPara || `<p class="used-para">${escapeHtml(data.analogy || 'This program follows the concepts listed above to work through your input step by step.')}</p>`}
+    </div>
+    <div class="used-card">
+      <h2 class="used-title">🌍 Where this shows up in the real world</h2>
+      <ul class="world-list">${worldItems}</ul>
+    </div>
+  `;
+}
+
+/* ---------- OFFLINE FALLBACK STORY ---------- */
+
+function makeLocalStory(code){
+  const c = code.replace(/\r/g, '').trim();
+  const lower = c.toLowerCase();
+  let title = "Python Algorithm", analogy = "Think of the code as a small set of instructions that moves through data one step at a time.", algorithm_type = "Iterative", steps = [];
+  let end_state = { explanation: "The algorithm finishes after following its instructions and produces its final result.", pointers: "result = final value", memory_picture: "input → process → result" };
+  const add = (name, explanation, pointers, memory) => steps.push({step_name:name, explanation, pointers, memory_picture:memory});
+
+  if ((lower.includes("linked list") || c.includes(".next")) && (lower.includes("reverse") || lower.includes("prev") || lower.includes("curr"))) {
+    title = "Reverse Linked List"; analogy = "Imagine a line of people turning around so each person points back to the person before them."; algorithm_type = "Iterative / Linked List";
+    add("Start at the head", "curr points to the first node. prev starts as None.", "curr = head | prev = None", "prev → None\ncurr → [10] → [20] → [30] → None");
+    add("Save the next node", "Before changing curr.next, save the next node so the rest of the list isn't lost.", "next_node = curr.next", "[10] → [20] → [30] → None\n       ↑\n   next_node");
+    add("Reverse the arrow", "curr.next now points backward to prev.", "curr.next = prev", "None ← [10]    [20] → [30] → None\n       ↑\n      curr");
+    add("Move the pointers", "prev and curr both move one step forward.", "prev = curr | curr = next_node", "None ← [10]    [20] → [30] → None\n       ↑       ↑\n      prev    curr");
+    add("Repeat", "Each loop reverses one more arrow until curr becomes None.", "while curr", "None ← [10] ← [20] ← [30]\n                         ↑\n                       prev");
+    end_state = { explanation:"prev is now the new head of the reversed linked list.", pointers:"head = prev", memory_picture:"new head\n   ↓\n[30] → [20] → [10] → None" };
+  } else if (lower.includes("gcd") || (lower.includes("while") && lower.includes("s") && lower.includes("r"))) {
+    title = "Euclidean GCD"; analogy = "Imagine two ropes of different lengths — you keep cutting the longer one down by the shorter one until they match."; algorithm_type = "Iterative / Number Theory";
+    add("Start with two numbers", "r and s are the two starting values.", "r = start | s = start", "r = 48\ns = 18");
+    add("Check if s is zero", "If s is 0, r already holds the answer.", "if s == 0: stop", "s == 0 ? not yet");
+    add("Keep the larger on top", "If r is smaller than s, swap them so r is always the larger value.", "if r < s: swap", "r = 18, s = 48 → swap → r = 48, s = 18");
+    add("Subtract", "Subtract s from r — this shrinks the numbers while keeping the same GCD.", "r = r - s", "r = 48 - 18 = 30");
+    add("Repeat", "Keep checking and subtracting until s becomes 0.", "while s != 0", "r=30,s=18 → r=12,s=18 → ...");
+    end_state = { explanation:"When s reaches 0, r holds the greatest common divisor.", pointers:"result = r", memory_picture:"s == 0\n  ↓\nreturn r" };
+  } else if (lower.includes("for ") || lower.includes("while ")) {
+    title = "Loop Through the Data"; analogy = "Imagine walking through every item in a line and performing the same small action on each one."; algorithm_type = "Iterative / Loop";
+    add("Start the loop", "The loop begins and prepares to process the data.", "i = starting position", "i → [first item] → [next] → [next]");
+    add("Process the current item", "The statements inside the loop run for the current item.", "current = data[i]", "current\n  ↓\n[data[i]]");
+    add("Update the position", "The loop moves to the next item.", "i += 1", "[done] → [current] → [next]");
+    add("Repeat until finished", "The loop keeps going until its condition becomes false.", "condition → true / false", "items: ✓ ✓ ✓ ✓ → finished");
+    end_state = { explanation:"The loop stops when there are no more required iterations.", pointers:"i = final position", memory_picture:"processed items → final result" };
+  } else {
+    title = "Python Code Walkthrough"; analogy = "Imagine following a recipe: read an instruction, do the action, then move to the next one."; algorithm_type = "Step-by-Step";
+    c.split('\n').map(x=>x.trim()).filter(Boolean).slice(0, 6).forEach((line, i) => add(`Step ${i + 1}`, `This line runs as part of the program: ${line.slice(0,120)}`, `line = ${i + 1}`, `execution → line ${i + 1}`));
+    end_state = { explanation:"This offline mode follows the code top to bottom for an unfamiliar pattern.", pointers:"done = true", memory_picture:"code\n ↓\nresult" };
+  }
+  return {title, analogy, algorithm_type, steps, end_state};
+}
+
+/* ---------- REAL INPUT FLOW: deterministic JS simulation, no AI needed ---------- */
+
+function rfNode(shape, title, sub, value){
+  let inner;
+  if (shape === 'oval') inner = `<div class="rf-oval">${escapeHtml(title)}</div>`;
+  else if (shape === 'parallelogram') inner = `<div class="rf-parallelogram"><span class="rf-inner">${escapeHtml(title)}</span></div>`;
+  else inner = `<div class="rf-rect"><div class="rf-title">${escapeHtml(title)}</div>${sub ? `<div class="rf-sub">${escapeHtml(sub)}</div>` : ''}</div>`;
+  return `<div class="rf-node-wrap">${inner}${value ? `<div class="rf-value">${escapeHtml(value)}</div>` : ''}</div>`;
+}
+function rfArrow(){ return `<div class="rf-arrow">↓</div>`; }
+function rfDiamond(label){
+  return `<div class="rf-node-wrap"><div class="rf-diamond-outer"><div class="rf-diamond-shape"></div><div class="rf-diamond-text">${escapeHtml(label)}</div></div></div>`;
+}
+function rfBranch(yesHtml, noHtml, takenYes){
+  return `
+    <div class="flow-branch" style="margin:0 auto;">
+      <div class="flow-branch-col rf-branch-col ${takenYes ? '' : 'dim'}"><div class="flow-branch-label">YES</div>${yesHtml}</div>
+      <div class="flow-branch-col rf-branch-col ${takenYes ? 'dim' : ''}"><div class="flow-branch-label">NO</div>${noHtml}</div>
+    </div>
+  `;
+}
+
+function extractMainCalls(code){
+  const m = code.match(/if\s+__name__\s*==\s*["']__main__["']\s*:([\s\S]*)/);
+  if (!m) return [];
+  const lines = m[1].split('\n').map(l => l.trim()).filter(Boolean);
+  const calls = [];
+  lines.forEach(line => {
+    let mm = line.match(/^(\w+)\s*=\s*(\w+)\(\s*\)\s*$/);
+    if (mm){ calls.push({type:'init', var:mm[1], cls:mm[2]}); return; }
+    mm = line.match(/^(\w+)\.(\w+)\(([^)]*)\)\s*$/);
+    if (mm){ calls.push({type:'call', var:mm[1], method:mm[2], arg:mm[3].trim()}); return; }
+    mm = line.match(/^print\((.*)\)\s*$/);
+    if (mm){ calls.push({type:'print', raw:mm[1]}); return; }
+  });
+  return calls;
+}
+
+function isLinkedListPattern(code){
+  return /insert_head/.test(code) && /insert_tail/.test(code) && /delete_value/.test(code) && /to_list/.test(code);
+}
+
+function simulateLinkedList(calls){
+  let arr = [];
+  const trace = [];
+  calls.forEach(c => {
+    if (c.type === 'init'){
+      arr = [];
+      trace.push({ op:'init', desc:`${c.var} = ${c.cls}()`, state:[...arr] });
+    } else if (c.type === 'call'){
+      const n = Number(c.arg);
+      if (c.method === 'insert_head'){ arr.unshift(n); trace.push({ op:'insert_head', arg:c.arg, state:[...arr] }); }
+      else if (c.method === 'insert_tail'){ arr.push(n); trace.push({ op:'insert_tail', arg:c.arg, state:[...arr] }); }
+      else if (c.method === 'delete_value'){
+        const idx = arr.indexOf(n);
+        const found = idx !== -1;
+        if (found) arr.splice(idx, 1);
+        trace.push({ op:'delete_value', arg:c.arg, found, state:[...arr] });
+      } else if (c.method === 'to_list'){
+        trace.push({ op:'to_list', state:[...arr] });
       }
+    } else if (c.type === 'print'){
+      trace.push({ op:'print', desc:c.raw, state:[...arr] });
+    }
+  });
+  return trace;
+}
 
-      html += `
-        <div class="trace-step">
-          <div class="step-num">${idx + 1}</div>
-          <div class="step-box">
-            <div class="step-code">
-              <span>${escapeHTML(sourceLine)}</span>
-              <span class="step-meta">Line ${step.line} | ${escapeHTML(step.func)}()</span>
-            </div>
-            <div class="step-locals">${locsHtml}</div>
-          </div>
+function renderRealInputFlow(code){
+  const el = document.getElementById('realflow-content');
+
+  if (!isLinkedListPattern(code)){
+    el.innerHTML = `
+      <div class="flow-card">
+        <div class="source-badge local">📐 Deterministic simulation (no AI)</div>
+        <div class="rf-fallback">
+          This tab runs a real, built-in simulator for singly-linked-list CRUD code (insert_head / insert_tail / delete_value / to_list),
+          tracing your actual <code>__main__</code> values exactly the way Python would.<br><br>
+          Your current code doesn't match that pattern, so there's nothing to simulate here yet — check the
+          <b>🗺️ Flowchart</b> tab instead for an AI-estimated trace of this code.
         </div>
-      `;
-    });
-    
-    document.getElementById('trace').innerHTML = html;
+      </div>
+    `;
+    return;
   }
 
-  async function renderFlowchart(trace, codeLines) {
-    const chartContainer = document.getElementById('flowchart');
-    
-    if (!trace || trace.length === 0) {
-      chartContainer.innerHTML = `<div class="empty">No data for flowchart.</div>`;
-      return;
-    }
-
-    chartContainer.innerHTML = `<div class="empty">Generating Logic Flowchart...</div>`;
-
-    // Cap the flowchart at 60 steps to prevent browser freezing on infinite loops
-    const flowTrace = trace.slice(0, 60);
-    
-    let graphDef = "graph TD\n";
-    graphDef += "Start([Start Execution])\n";
-    let prevNode = "Start";
-    
-    flowTrace.forEach((step, idx) => {
-      let nodeId = `Step${idx}`;
-      let rawCode = codeLines[step.line - 1] ? codeLines[step.line - 1].trim() : "";
-      
-      // CRITICAL: Aggressive sanitization to prevent Mermaid crash. 
-      // Replace all quotes, brackets, and arrows with safe characters.
-      let safeCode = rawCode.replace(/["\\[\]{}]/g, '').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 40);
-      if (rawCode.length > 40) safeCode += "...";
-      
-      // If the code is a condition, render it as a Diamond { }
-      if (rawCode.startsWith("if ") || rawCode.startsWith("while ") || rawCode.startsWith("elif ")) {
-        graphDef += `${nodeId}{"${safeCode}"}\n`;
-      } else {
-        // Otherwise render as a standard process box [ ]
-        graphDef += `${nodeId}["${safeCode}"]\n`;
-      }
-      
-      graphDef += `${prevNode} --> ${nodeId}\n`;
-      prevNode = nodeId;
-    });
-
-    graphDef += "End([Finish Execution])\n";
-    graphDef += `${prevNode} --> End\n`;
-
-    try {
-      // Create a unique ID for the mermaid render to avoid caching issues
-      const id = 'mermaid-svg-' + Date.now();
-      const { svg } = await mermaid.render(id, graphDef);
-      
-      chartContainer.innerHTML = `<div class="mermaid-container">${svg}</div>`;
-    } catch(e) {
-      chartContainer.innerHTML = `
-        <div class="console-box error-text">
-          <strong>Flowchart Generation Failed.</strong><br>
-          Reason: The algorithm logic was too complex or contained syntax that the graph renderer could not parse.<br><br>
-          Error Log: ${escapeHTML(e.message)}
-        </div>`;
-      console.error("Mermaid Render Error:", e);
-    }
+  const calls = extractMainCalls(code);
+  if (!calls.length){
+    el.innerHTML = `
+      <div class="flow-card">
+        <div class="source-badge local">📐 Deterministic simulation (no AI)</div>
+        <div class="rf-fallback">This looks like linked-list code, but no <code>if __name__ == "__main__":</code> example block was found to pull real input values from. Add one (like creating the list and calling its methods) to see the real trace.</div>
+      </div>
+    `;
+    return;
   }
+
+  const trace = simulateLinkedList(calls);
+  let html = rfNode('oval', 'Start') + rfArrow();
+
+  trace.forEach(t => {
+    if (t.op === 'init'){
+      html += rfNode('rect', t.desc, 'head = None', `list → [ ]`) + rfArrow();
+    } else if (t.op === 'insert_head'){
+      html += rfNode('parallelogram', `Enter value: ${t.arg}`) + rfArrow();
+      html += rfNode('rect', `insert_head(${t.arg})`, `new_node(${t.arg})\nnew_node.next = old head\nhead = new_node  (O(1))`, `list → [${t.state.join(', ')}]`) + rfArrow();
+    } else if (t.op === 'insert_tail'){
+      html += rfNode('parallelogram', `Enter value: ${t.arg}`) + rfArrow();
+      html += rfNode('rect', `insert_tail(${t.arg})`, `walk curr = curr.next\nuntil curr.next is None  (O(n))\ncurr.next = new_node(${t.arg})`, `list → [${t.state.join(', ')}]`) + rfArrow();
+    } else if (t.op === 'delete_value'){
+      html += rfNode('parallelogram', `Enter target: ${t.arg}`) + rfArrow();
+      html += rfDiamond(`Is ${t.arg} in the list?`) + rfArrow();
+      const yesHtml = rfNode('rect', 'Unlink the node', `prev.next = curr.next`, `list → [${t.state.join(', ')}]`);
+      const noHtml = rfNode('rect', 'Reach end of list', `return False\n(nothing removed)`);
+      html += rfBranch(yesHtml, noHtml, t.found) + rfArrow();
+    } else if (t.op === 'to_list'){
+      /* folded into the following print, skip standalone node */
+    } else if (t.op === 'print'){
+      html += rfNode('parallelogram', 'Print result', null, `Output → [${t.state.join(', ')}]`) + rfArrow();
+    }
+  });
+
+  html += rfNode('oval', 'Stop');
+
+  el.innerHTML = `
+    <div class="flow-card">
+      <div class="source-badge local">📐 Deterministic simulation — traced from your real __main__ input, no AI needed</div>
+      <h2 class="flow-title">Real Input Flow</h2>
+      <p class="flow-subtitle">Every value below was actually computed by re-running your program's own example, step by step.</p>
+      <div class="flowchart">${html}</div>
+    </div>
+  `;
+}
+
+/* ---------- AI CALL: free, key-free, browser-side (Pollinations.ai public text API) ---------- */
+
+async function callAI(code){
+  const systemPrompt = `You are a friendly teacher who can explain Python code at two levels: a simple version for a curious 10-year-old, and a technical version for a professional software engineer. Use one consistent real-world analogy throughout.
+
+Respond ONLY with valid JSON, no markdown fences, no preamble, no trailing text. Match exactly this schema:
+{
+  "title": "short algorithm name",
+  "analogy": "one sentence real-world analogy for the whole algorithm",
+  "algorithm_type": "short tag, e.g. Two-Pointer / Iterative / Recursive / Sliding Window",
+  "what_we_used": "one short paragraph naming the concepts, data structures, and built-ins actually used in this code",
+  "real_world_uses": ["short real-world use case 1", "short real-world use case 2", "short real-world use case 3"],
+  "steps": [ { "step_name": "short title", "explanation_kid": "2-3 simple sentences for a child, tied to the analogy", "explanation_pro": "1-2 precise technical sentences for a professional", "pointers": "var1 = value | var2 = value", "memory_picture": "small plain-text diagram, max 4 lines" } ],
+  "end_state": { "explanation_kid": "simple", "explanation_pro": "technical", "pointers": "final var = value", "memory_picture": "small plain-text diagram" },
+  "flowchart": {
+    "input_example": "one short concrete input, e.g. r=48, s=18",
+    "nodes": [ { "id": "n1", "type": "start|decision|action|loop|end", "label": "short label" } ],
+    "edges": [ { "from": "n1", "to": "n2", "label": "true|false|" } ],
+    "trace": [ { "node_id": "n1", "values": "short state snapshot for that visit" } ]
+  }
+}
+Keep steps to at most 6, flowchart.nodes to at most 8, flowchart.trace to at most 8. Keep every string short so the whole JSON stays well under 1400 tokens.
+
+Explain this Python code:
+
+`;
+  const fullPrompt = systemPrompt + code;
+  const url = "https://text.pollinations.ai/" + encodeURIComponent(fullPrompt);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  let raw;
+  try {
+    const resp = await fetch(url, { signal: controller.signal });
+    if (!resp.ok) throw new Error("AI service returned status " + resp.status);
+    raw = await resp.text();
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  raw = raw.trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+  const firstBrace = raw.indexOf('{');
+  const lastBrace = raw.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1) throw new Error("AI response wasn't valid JSON");
+  raw = raw.slice(firstBrace, lastBrace + 1);
+  return JSON.parse(raw);
+}
+
+/* ---------- MAIN ---------- */
+
+async function explainCode(){
+  const code = document.getElementById('code-input').value.trim();
+  if (!code){ return; }
+
+  switchTab('story');
+  storyContent.innerHTML = `<div class="state-msg">🪄 Turning your code into a story...</div>`;
+  flowContent.innerHTML = `<div class="flow-empty">🗺️ Building the flowchart...</div>`;
+  usedContent.innerHTML = `<div class="used-empty">🧠 Looking at what your code is built from...</div>`;
+  submitBtn.disabled = true;
+
+  const analysis = analyzeCode(code);
+  renderRealInputFlow(code);
+
+  try {
+    const data = await callAI(code);
+    level = 'kid';
+    renderStory(data, 'ai');
+    renderFlowchartAI(data.flowchart, data.title);
+    renderUsed(data, analysis, 'ai');
+  } catch (err) {
+    const local = makeLocalStory(code);
+    renderStory(local, 'local');
+    renderFlow(code);
+    renderUsed(local, analysis, 'local');
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+submitBtn.addEventListener('click', explainCode);
 </script>
 </body>
 </html>
