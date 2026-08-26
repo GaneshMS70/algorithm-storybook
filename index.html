@@ -223,10 +223,21 @@ function analyzeCode(code){
 
   if (/\bdef\s+\w+/.test(c)) concepts.push('function definition');
   const funcNames = [...c.matchAll(/\bdef\s+(\w+)\s*\(/g)].map(m => m[1]);
+  const lines = c.split('\n');
   funcNames.forEach(name => {
-    const bodyCallPattern = new RegExp('\\b' + name + '\\s*\\(');
-    const occurrences = (c.match(new RegExp('\\b' + name + '\\s*\\(', 'g')) || []).length;
-    if (occurrences > 1) concepts.push('recursion (' + name + ')');
+    const defIdx = lines.findIndex(l => new RegExp('^\\s*def\\s+' + name + '\\s*\\(').test(l));
+    if (defIdx === -1) return;
+    const defIndent = (lines[defIdx].match(/^\s*/) || [''])[0].length;
+    const bodyLines = [];
+    for (let i = defIdx + 1; i < lines.length; i++){
+      const line = lines[i];
+      if (line.trim() === ''){ bodyLines.push(line); continue; }
+      const indent = (line.match(/^\s*/) || [''])[0].length;
+      if (indent <= defIndent) break;
+      bodyLines.push(line);
+    }
+    const body = bodyLines.join('\n');
+    if (new RegExp('\\b' + name + '\\s*\\(').test(body)) concepts.push('recursion (' + name + ')');
   });
   if (/\bfor\s+.+\bin\b/.test(c)) concepts.push('for loop');
   if (/\bwhile\b/.test(c)) concepts.push('while loop');
@@ -277,7 +288,12 @@ function renderStory(data, source){
   lastData = data; lastSource = source;
   const stepsHtml = (data.steps || []).map((s, i) => renderStep(s, i + 1, false)).join('');
   const endHtml = data.end_state ? renderStep(data.end_state, 0, true) : '';
-  const badge = source === 'ai' ? `<div class="source-badge ai">🤖 AI-generated explanation</div>` : `<div class="source-badge local">📦 Offline built-in explanation</div>`;
+  const badgeMap = {
+    ai: `<div class="source-badge ai">🤖 AI-generated explanation</div>`,
+    trace: `<div class="source-badge local">📐 Built from your real execution trace — accurate, no AI needed</div>`,
+    local: `<div class="source-badge local">📦 Offline built-in explanation</div>`
+  };
+  const badge = badgeMap[source] || badgeMap.local;
   const toggle = `
     <div class="level-toggle">
       <button class="level-btn ${level==='kid'?'active':''}" id="lvl-kid" ${source!=='ai'?'disabled title="Needs AI mode"':''}>👶 Simple</button>
@@ -307,7 +323,7 @@ function flowNodeHtml(node){
   return `<div class="flow-node ${escapeHtml(node.type || 'process')}"><div class="flow-label">${escapeHtml(node.label || '')}</div>${node.code ? `<code class="flow-code">${escapeHtml(node.code)}</code>` : ''}</div>`;
 }
 
-function renderFlowchartAI(flowchart, title){
+function renderFlowchartAI(flowchart, title, source){
   if (!flowchart || !flowchart.nodes || !flowchart.nodes.length){
     renderFlow(document.getElementById('code-input').value);
     return;
@@ -324,9 +340,12 @@ function renderFlowchartAI(flowchart, title){
     const label = (nodesById[t.node_id] || {}).label || t.node_id;
     return `<div class="step"><div class="step-head"><div class="step-num">${i+1}</div><div class="step-name">${escapeHtml(label)}</div></div>${t.values ? `<div class="pointers"><span class="chip">${escapeHtml(t.values)}</span></div>` : ''}</div>`;
   }).join('');
+  const badgeHtml = source === 'trace'
+    ? `<div class="source-badge local">📐 Built from your real execution trace — accurate, no AI needed</div>`
+    : `<div class="source-badge ai">🤖 AI-generated flow + live trace</div>`;
   flowContent.innerHTML = `
     <div class="flow-card">
-      <div class="source-badge ai">🤖 AI-generated flow + live trace</div>
+      ${badgeHtml}
       <h2 class="flow-title">${escapeHtml(title || 'Algorithm')} — Flowchart</h2>
       <p class="flow-subtitle">How the program is structured, decision by decision.</p>
       <div class="flowchart">${structuralHtml}</div>
@@ -385,10 +404,15 @@ function renderFlow(code){
 
 function renderUsed(data, analysis, source){
   const chips = (analysis.concepts || []).map(c => `<span class="concept-chip">${escapeHtml(c)}</span>`).join('');
-  const aiPara = source === 'ai' && data.what_we_used ? `<p class="used-para">${escapeHtml(data.what_we_used)}</p>` : '';
-  const worldItems = (source === 'ai' && Array.isArray(data.real_world_uses) && data.real_world_uses.length)
+  const hasRealUses = Array.isArray(data.real_world_uses) && data.real_world_uses.length;
+  const summaryPara = data.what_we_used
+    ? `<p class="used-para">${escapeHtml(data.what_we_used)}</p>`
+    : `<p class="used-para">${escapeHtml(data.analogy || 'This program follows the concepts listed above to work through your input step by step.')}</p>`;
+  const worldItems = hasRealUses
     ? data.real_world_uses.map(u => `<li>${escapeHtml(u)}</li>`).join('')
     : `<li>Search this algorithm's name alongside "real world use case" once you know its name from the Story tab — most classic algorithms (sorting, searching, traversal) map directly onto real software problems.</li>`;
+  const summaryBadge = source === 'trace' ? 'local' : (source === 'ai' ? 'ai' : 'local');
+  const summaryLabel = source === 'trace' ? '📐 Derived from your real execution trace' : (source === 'ai' ? '🤖 AI summary' : '📦 Offline summary');
   usedContent.innerHTML = `
     <div class="used-card">
       <div class="source-badge local">📦 Detected from your code (always on, no AI needed)</div>
@@ -396,9 +420,9 @@ function renderUsed(data, analysis, source){
       <div class="concept-list">${chips || '<span class="hint">No specific patterns detected — this looks like straight-line code with no loops, recursion, or common built-ins.</span>'}</div>
     </div>
     <div class="used-card">
-      <div class="source-badge ${source === 'ai' ? 'ai' : 'local'}">${source === 'ai' ? '🤖 AI summary' : '📦 Offline summary'}</div>
+      <div class="source-badge ${summaryBadge}">${summaryLabel}</div>
       <h2 class="used-title">📖 What this program is doing, in plain terms</h2>
-      ${aiPara || `<p class="used-para">${escapeHtml(data.analogy || 'This program follows the concepts listed above to work through your input step by step.')}</p>`}
+      ${summaryPara}
     </div>
     <div class="used-card">
       <h2 class="used-title">🌍 Where this shows up in the real world</h2>
@@ -593,46 +617,41 @@ finally:
 json.dumps({'trace': __trace__, 'stdout': __cap__.lines, 'error': __error__, 'truncated': len(__trace__) >= __MAX_STEPS__})
 `;
 
-async function renderRealInputFlow(code){
-  const el = document.getElementById('realflow-content');
-
+async function runPythonTrace(code){
   if (/\binput\s*\(/.test(code)){
-    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">This code calls <code>input()</code>, which needs a live keyboard — that isn't available in this trace. Replace <code>input()</code> calls with fixed example values (or add an <code>if __name__ == "__main__":</code> block that calls your functions directly) to see the real trace.</div></div>`;
-    return;
+    return { ok:false, reason:'input' };
   }
-
-  el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="state-msg">🐍 Starting a real Python runtime in your browser (first run only takes a few seconds)...</div></div>`;
-
   let py;
   try {
     py = await ensurePyodide();
   } catch (e){
-    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">Couldn't start the in-browser Python runtime here (${escapeHtml(String(e && e.message || e))}).<br><br>This usually means the current page is a sandboxed preview that blocks WebAssembly/Web Workers — it's a limitation of <i>this environment</i>, not your code. Try opening the saved HTML file directly in a normal browser tab, or hosting it (e.g. GitHub Pages), and it should work there. In the meantime, check the 🗺️ Flowchart tab for an AI-estimated trace instead.</div></div>`;
-    return;
+    return { ok:false, reason:'load', message: String(e && e.message || e) };
   }
-
   let resultJson;
   try {
     py.globals.set('__user_code__', code);
     resultJson = await py.runPythonAsync(PY_TRACER_WRAPPER);
   } catch (e){
-    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="error-msg">😕 The Python runtime itself hit an error running this trace: ${escapeHtml(String(e))}</div></div>`;
+    return { ok:false, reason:'runtime', message: String(e) };
+  }
+  return { ok:true, result: JSON.parse(resultJson) };
+}
+
+function renderRealInputFlowFromOutcome(outcome){
+  const el = document.getElementById('realflow-content');
+
+  if (!outcome.ok){
+    if (outcome.reason === 'input'){
+      el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">This code calls <code>input()</code>, which needs a live keyboard — that isn't available in this trace. Replace <code>input()</code> calls with fixed example values (or add an <code>if __name__ == "__main__":</code> block that calls your functions directly) to see the real trace.</div></div>`;
+    } else if (outcome.reason === 'load'){
+      el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">Couldn't start the in-browser Python runtime here (${escapeHtml(outcome.message)}).<br><br>This usually means the current page is a sandboxed preview that blocks WebAssembly/Web Workers — it's a limitation of <i>this environment</i>, not your code. Try opening the saved HTML file directly in a normal browser tab, or hosting it (e.g. GitHub Pages), and it should work there.</div></div>`;
+    } else {
+      el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="error-msg">😕 The Python runtime itself hit an error running this trace: ${escapeHtml(outcome.message)}</div></div>`;
+    }
     return;
   }
 
-  const result = JSON.parse(resultJson);
-
-  if (result.error){
-    el.innerHTML = `
-      <div class="flow-card">
-        <div class="source-badge local">📐 Real Python execution</div>
-        <h2 class="flow-title">Your code raised an error</h2>
-        <div class="error-msg">${escapeHtml(result.error)}</div>
-        ${result.trace.length ? `<div class="flow-note">💡 It ran ${result.trace.length} line(s) before failing — here's how far it got.</div>` : ''}
-      </div>
-    `;
-  }
-
+  const result = outcome.result;
   let html = rfNode('oval', 'Start') + rfArrow();
   result.trace.forEach(t => {
     const kind = classifyLine(t.src);
@@ -656,10 +675,110 @@ async function renderRealInputFlow(code){
       <p class="flow-subtitle">Every box below is a real line your program executed, with the real variable values at that moment.</p>
       ${result.error ? `<div class="error-msg" style="margin-bottom:16px;">😕 ${escapeHtml(result.error)}</div>` : ''}
       <div class="flowchart">${html}</div>
-      ${result.truncated ? `<div class="flow-note">💡 Showing the first 60 executed lines — loops/recursion beyond that were cut off to keep this readable.</div>` : ''}
+      ${result.truncated ? `<div class="flow-note">💡 Showing the first 70 executed lines — loops/recursion beyond that were cut off to keep this readable.</div>` : ''}
       ${outputHtml}
     </div>
   `;
+}
+
+/* ---------- Build Story + Flowchart from the SAME real trace (accurate, no AI needed) ---------- */
+
+function guessProfile(analysis, code){
+  const has = k => analysis.concepts.some(c => c.includes(k));
+  let title = 'Python Algorithm';
+  let analogy = 'Follow the code one real step at a time, exactly as Python executes it.';
+  let algorithm_type = 'Iterative';
+  let real_world_uses = ['Understanding exactly how your own code behaves, line by line, with real values.'];
+
+  if (has('set') && (has('for loop') || has('while loop'))) {
+    title = 'Hash Set Lookup';
+    algorithm_type = 'Iterative / Hash Set';
+    analogy = 'Like checking name tags at a party — you remember every name you have already seen, so spotting a repeat is instant.';
+    real_world_uses = ['Detecting duplicate transactions, signups, or uploads', 'De-duplicating records before loading into a database', 'Fast membership checks in caches, allow-lists, and rate limiters'];
+  } else if (has('dictionary') && (has('for loop') || has('while loop'))) {
+    title = 'Hash Map Lookup';
+    algorithm_type = 'Iterative / Hash Map';
+    analogy = 'Like a phone book — instead of scanning every entry, you jump straight to the value tied to a key.';
+    real_world_uses = ['Counting word/item frequency', 'Caching computed results (memoization)', 'Looking up records by ID in O(1) time'];
+  } else if (has('linked list traversal')) {
+    title = 'Linked List Traversal';
+    algorithm_type = 'Iterative / Linked List';
+    analogy = 'Like following a chain of people, each pointing to the next, one hop at a time.';
+    real_world_uses = ['Undo/redo history in editors', 'Implementing queues and stacks under the hood', '"Next track" chaining in playlists'];
+  } else if (has('recursion')) {
+    title = 'Recursive Algorithm';
+    algorithm_type = 'Recursive';
+    analogy = 'Like Russian nesting dolls — the problem opens into a smaller copy of itself until it hits the smallest doll, then closes back up.';
+    real_world_uses = ['Parsing nested data (JSON, file trees, DOM)', 'Divide-and-conquer algorithms (merge sort, quicksort)', 'Tree and graph traversal'];
+  } else if (has('stack/queue')) {
+    title = 'Stack/Queue-Based Algorithm';
+    algorithm_type = 'Iterative / Stack or Queue';
+    analogy = 'Like a stack of plates (last on, first off) or a checkout line (first in, first out).';
+    real_world_uses = ['Undo/redo, browser back button (stack)', 'Task scheduling, print queues (queue)', 'Balanced-parenthesis / expression checking'];
+  } else if (has('for loop') || has('while loop')) {
+    title = 'Loop-Based Algorithm';
+    algorithm_type = 'Iterative';
+    analogy = 'Like walking down a line of items and doing the same small action to each one.';
+    real_world_uses = ['Batch processing records', 'Scanning input for a match or a running total', 'Any repeated, rule-based task'];
+  }
+  return { title, analogy, algorithm_type, real_world_uses };
+}
+
+function buildStoryFromTrace(trace, stdout, profile){
+  const seenLines = new Set();
+  const steps = [];
+  trace.forEach(t => {
+    const key = t.line + '|' + t.src;
+    if (seenLines.has(key)) return;
+    seenLines.add(key);
+    const kind = classifyLine(t.src);
+    if (kind === 'skip') return;
+    const label = t.src.trim();
+    const varsText = Object.entries(t.vars || {}).map(([k, v]) => `${k}=${v}`).join(' | ');
+    let explanation;
+    if (kind === 'decision') explanation = `The program checks a condition here: ${label} — this decides which path runs next, and gets re-checked every time a loop comes back around.`;
+    else if (kind === 'io') explanation = `This is where the program produces visible output: ${label}`;
+    else if (kind === 'return') explanation = `The function hands back its answer here: ${label}`;
+    else explanation = `This line runs as part of the program: ${label}`;
+    steps.push({ step_name: label.length > 42 ? label.slice(0, 39) + '...' : label, explanation, pointers: varsText, memory_picture: varsText || '(no tracked variables at this point)' });
+  });
+  const limited = steps.slice(0, 8);
+  const end_state = {
+    explanation: stdout.length ? `The program finished and printed: ${stdout.join(' | ')}` : 'The program finished running without printing anything.',
+    pointers: '',
+    memory_picture: stdout.join('\n')
+  };
+  return { title: profile.title, analogy: profile.analogy, algorithm_type: profile.algorithm_type, steps: limited, end_state, real_world_uses: profile.real_world_uses };
+}
+
+function buildFlowFromTrace(trace){
+  const idByLabel = new Map();
+  const nodes = [];
+  const edges = [];
+  const exampleTrace = [];
+  let prevId = null;
+  let counter = 0;
+  trace.forEach(t => {
+    const kind = classifyLine(t.src);
+    if (kind === 'skip') return;
+    const label = t.src.trim().slice(0, 60);
+    let id = idByLabel.get(label);
+    if (!id){
+      id = 'n' + (counter++);
+      idByLabel.set(label, id);
+      const type = kind === 'decision' ? 'decision' : kind === 'return' ? 'end' : 'action';
+      nodes.push({ id, type, label });
+    }
+    if (prevId && prevId !== id && !edges.some(e => e.from === prevId && e.to === id)){
+      edges.push({ from: prevId, to: id, label: '' });
+    }
+    prevId = id;
+    if (exampleTrace.length < 10){
+      const varsText = Object.entries(t.vars || {}).map(([k, v]) => `${k}=${v}`).join(', ');
+      exampleTrace.push({ node_id: id, values: varsText });
+    }
+  });
+  return { input_example: '', nodes, edges, trace: exampleTrace };
 }
 
 /* ---------- AI CALL: free, key-free, browser-side (Pollinations.ai public text API) ---------- */
@@ -720,16 +839,33 @@ async function explainCode(){
   storyContent.innerHTML = `<div class="state-msg">🪄 Turning your code into a story...</div>`;
   flowContent.innerHTML = `<div class="flow-empty">🗺️ Building the flowchart...</div>`;
   usedContent.innerHTML = `<div class="used-empty">🧠 Looking at what your code is built from...</div>`;
+  document.getElementById('realflow-content').innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="state-msg">🐍 Starting a real Python runtime in your browser (first run only takes a few seconds)...</div></div>`;
   submitBtn.disabled = true;
 
   const analysis = analyzeCode(code);
-  renderRealInputFlow(code).catch(() => {});
+  const traceOutcome = await runPythonTrace(code);
+  renderRealInputFlowFromOutcome(traceOutcome);
 
+  if (traceOutcome.ok && !traceOutcome.result.error && traceOutcome.result.trace.length){
+    // Best case: build Story + Flowchart + Used from the SAME real, accurate execution — no AI needed at all.
+    const profile = guessProfile(analysis, code);
+    const storyData = buildStoryFromTrace(traceOutcome.result.trace, traceOutcome.result.stdout, profile);
+    const flowData = buildFlowFromTrace(traceOutcome.result.trace);
+    level = 'kid';
+    renderStory(storyData, 'trace');
+    renderFlowchartAI(flowData, storyData.title, 'trace');
+    renderUsed(storyData, analysis, 'trace');
+    submitBtn.disabled = false;
+    return;
+  }
+
+  // Trace unavailable (sandboxed preview, input(), or the code itself errored before running anything useful).
+  // Fall back to AI, then to generic offline templates as a last resort.
   try {
     const data = await callAI(code);
     level = 'kid';
     renderStory(data, 'ai');
-    renderFlowchartAI(data.flowchart, data.title);
+    renderFlowchartAI(data.flowchart, data.title, 'ai');
     renderUsed(data, analysis, 'ai');
   } catch (err) {
     const local = makeLocalStory(code);
