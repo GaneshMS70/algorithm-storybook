@@ -470,10 +470,35 @@ function classifyLine(src){
 
 let pyodideInstance = null;
 let pyodideLoadPromise = null;
+let __pyodideLoadReject = null;
+window.addEventListener('error', e => {
+  if (__pyodideLoadReject && e && e.message){
+    __pyodideLoadReject(new Error('Runtime error while starting Python: ' + e.message));
+  }
+});
+window.addEventListener('unhandledrejection', e => {
+  if (__pyodideLoadReject){
+    __pyodideLoadReject(new Error('Runtime error while starting Python: ' + (e.reason && e.reason.message || e.reason)));
+  }
+});
+
 function ensurePyodide(){
   if (pyodideInstance) return Promise.resolve(pyodideInstance);
   if (!pyodideLoadPromise){
-    pyodideLoadPromise = window.loadPyodide().then(py => { pyodideInstance = py; return py; });
+    let settled = false;
+    const failFast = new Promise((_, reject) => {
+      __pyodideLoadReject = (err) => { if (!settled){ settled = true; reject(err); } };
+    });
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => { if (!settled){ settled = true; reject(new Error('Timed out starting the Python runtime (this environment may block WebAssembly/Web Workers).')); } }, 20000);
+    });
+    const loading = window.loadPyodide({
+      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
+    }).then(py => { settled = true; pyodideInstance = py; return py; });
+    pyodideLoadPromise = Promise.race([loading, timeout, failFast]).catch(err => {
+      pyodideLoadPromise = null; // allow retrying on a future submit
+      throw err;
+    }).finally(() => { __pyodideLoadReject = null; });
   }
   return pyodideLoadPromise;
 }
@@ -484,26 +509,55 @@ const PY_TRACER_WRAPPER = `
 import sys, json, linecache, traceback
 
 __trace__ = []
-__MAX_STEPS__ = 60
+__MAX_STEPS__ = 70
+
+def __friendly__(v):
+    try:
+        if isinstance(v, (int, float, str, bool)) or v is None:
+            return repr(v)
+        if isinstance(v, (list, tuple, dict, set)):
+            r = repr(v)
+            return r if len(r) < 100 else r[:97] + '...'
+        if hasattr(v, 'val') and hasattr(v, 'next'):
+            vals, node, seen = [], v, 0
+            while node is not None and seen < 6:
+                vals.append(getattr(node, 'val', '?'))
+                node = getattr(node, 'next', None)
+                seen += 1
+            more = ', ...' if node is not None else ''
+            return type(v).__name__ + ' chain: [' + ', '.join(str(x) for x in vals) + more + ']'
+        r = repr(v)
+        if ' object at 0x' in r:
+            return '<' + type(v).__name__ + '>'
+        return r if len(r) < 100 else r[:97] + '...'
+    except Exception:
+        return '<' + type(v).__name__ + '>'
+
+def __interesting__(frame, src):
+    t = src.strip()
+    if not t:
+        return False
+    if frame.f_code.co_name == '__init__':
+        return False
+    if t.startswith(('def ', 'class ', '"""', "'''", '@')):
+        return False
+    if t.startswith('if ') and '__name__' in t and '__main__' in t:
+        return False
+    return True
 
 def __tracer__(frame, event, arg):
     if event == 'line' and len(__trace__) < __MAX_STEPS__ and frame.f_code.co_filename == '<usercode>':
         src = linecache.getline('<usercode>', frame.f_lineno).rstrip()
-        snap = {}
-        for k, v in list(frame.f_locals.items()):
-            if k.startswith('__'):
-                continue
-            try:
-                if isinstance(v, (int, float, str, bool)) or v is None:
-                    snap[k] = repr(v)
-                elif isinstance(v, (list, tuple, dict, set)):
-                    r = repr(v)
-                    snap[k] = r if len(r) < 100 else r[:97] + '...'
-                else:
-                    snap[k] = '<' + type(v).__name__ + '>'
-            except Exception:
-                snap[k] = '<unrepr>'
-        __trace__.append({'line': frame.f_lineno, 'src': src, 'vars': snap})
+        if __interesting__(frame, src):
+            snap = {}
+            for k, v in list(frame.f_locals.items()):
+                if k.startswith('__'):
+                    continue
+                tv = type(v).__name__
+                if tv in ('function', 'type', 'module', 'builtin_function_or_method'):
+                    continue
+                snap[k] = __friendly__(v)
+            __trace__.append({'line': frame.f_lineno, 'src': src, 'vars': snap})
     return __tracer__
 
 class __Capture__:
@@ -553,7 +607,7 @@ async function renderRealInputFlow(code){
   try {
     py = await ensurePyodide();
   } catch (e){
-    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">Couldn't start the in-browser Python runtime (it needs to download from a CDN, so it may be blocked in this preview). Try opening the saved HTML file directly in a browser, or check the 🗺️ Flowchart tab for an AI-estimated trace instead.</div></div>`;
+    el.innerHTML = `<div class="flow-card"><div class="source-badge local">📐 Real Python execution</div><div class="rf-fallback">Couldn't start the in-browser Python runtime here (${escapeHtml(String(e && e.message || e))}).<br><br>This usually means the current page is a sandboxed preview that blocks WebAssembly/Web Workers — it's a limitation of <i>this environment</i>, not your code. Try opening the saved HTML file directly in a normal browser tab, or hosting it (e.g. GitHub Pages), and it should work there. In the meantime, check the 🗺️ Flowchart tab for an AI-estimated trace instead.</div></div>`;
     return;
   }
 
