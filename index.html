@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script type="module">
+  // Real in-browser ML model (Transformers.js / Hugging Face). Loaded as an ES module and
+  // exposed on window so the rest of the app (a classic script) can use it. Not fetched until
+  // the user opts in and submits, since the model itself is a real multi-MB download.
+  window.__transformersReady = import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2')
+    .then(mod => { window.__transformersModule = mod; return mod; })
+    .catch(err => { window.__transformersError = err; throw err; });
+</script>
 <style>
   :root{
     --cream:#F6F2E8; --paper:#FFFFFF; --ink:#2B2A28; --ink-soft:#6B6558;
@@ -51,6 +59,8 @@
   .info-panel{margin-top:14px;padding:14px 16px;background:var(--sky-soft);border-radius:10px;font-size:12.5px;line-height:1.6;color:var(--ink);display:none;}
   .info-panel.open{display:block;}
   .info-panel b{color:var(--sky);}
+  .local-ai-toggle{display:flex;align-items:flex-start;gap:8px;margin-top:14px;font-size:12.5px;color:var(--ink-soft);line-height:1.5;cursor:pointer;}
+  .local-ai-toggle input{margin-top:2px;flex-shrink:0;}
 
   .state-msg{text-align:center;padding:40px 10px;font-family:'Kalam',cursive;font-size:18px;color:var(--ink-soft);}
   .error-msg{text-align:center;padding:20px;font-size:14px;color:var(--coral);background:var(--coral-soft);border-radius:10px;border:2px solid var(--coral);}
@@ -159,16 +169,22 @@
         <span class="hint">Any Python snippet works — loops, recursion, sorting, linked lists...</span>
         <button class="go" id="submit-btn">Explain it like a story ✨</button>
       </div>
+      <label class="local-ai-toggle">
+        <input type="checkbox" id="use-local-ai">
+        🧠 Polish wording with a real in-browser AI model (Xenova/LaMini-Flan-T5-77M, downloads once, ~80MB, fully offline after that)
+      </label>
       <button class="info-link" id="info-toggle">ℹ️ What does this tool use?</button>
       <div class="info-panel" id="info-panel">
         Built with plain <b>HTML / CSS / JS</b> — no server, no backend, nothing to install.<br>
         Fonts: <b>Kalam</b>, <b>Nunito</b>, <b>JetBrains Mono</b> (Google Fonts).<br>
-        AI explanations come from <b>Pollinations.ai's free text API</b> — a public, key-free endpoint that runs a
-        request straight from your browser. It's free and requires no sign-up, but as a public service it can
-        occasionally be slow, rate-limited, or unreachable from certain networks/sandboxes.<br>
-        Because of that, this tool always also runs a small <b>offline analyzer</b> written in plain JavaScript
-        (pattern-matching on your code) so you get a complete result either way — a badge on every tab shows
-        whether you're looking at the 🤖 AI version or the 📦 offline version.
+        The core engine is <b>Pyodide</b> — real CPython compiled to WebAssembly, run entirely in your browser —
+        which actually executes your code to build the Story, Flowchart, "What's Used", and Interview Tips tabs
+        from real values, not guesses.<br>
+        Turning on the checkbox above loads <b>Transformers.js</b> (Hugging Face's in-browser ML library) with a
+        small model to rephrase the wording more naturally. It's optional because it's a real multi-MB download —
+        everything works accurately without it.<br>
+        If neither can start (e.g. a sandboxed preview blocking WebAssembly), a free remote text API and a built-in
+        offline analyzer step in as fallbacks — a badge on every tab always shows which source produced that result.
       </div>
     </div>
   </div>
@@ -296,6 +312,7 @@ function renderStory(data, source){
   const badgeMap = {
     ai: `<div class="source-badge ai">🤖 AI-generated explanation</div>`,
     trace: `<div class="source-badge local">📐 Built from your real execution trace — accurate, no AI needed</div>`,
+    'trace-ai': `<div class="source-badge ai">📐🧠 Real execution trace, wording polished by a local in-browser AI model</div>`,
     local: `<div class="source-badge local">📦 Offline built-in explanation</div>`
   };
   const badge = badgeMap[source] || badgeMap.local;
@@ -533,6 +550,42 @@ function ensurePyodide(){
 }
 // Start loading in the background as soon as the page opens, so it's likely ready by submit time.
 if (typeof window.loadPyodide === 'function'){ ensurePyodide().catch(() => {}); }
+
+/* ---------- Optional real in-browser AI model (Transformers.js) — opt-in, never required ---------- */
+
+let localAIInstance = null;
+let localAILoadPromise = null;
+
+function ensureLocalAI(onProgress){
+  if (localAIInstance) return Promise.resolve(localAIInstance);
+  if (!localAILoadPromise){
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timed out downloading/starting the local AI model.')), 90000);
+    });
+    const loading = (async () => {
+      const mod = await window.__transformersReady;
+      const { pipeline, env } = mod;
+      if (env){ env.allowLocalModels = false; }
+      const pipe = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M', {
+        progress_callback: onProgress || (() => {})
+      });
+      localAIInstance = pipe;
+      return pipe;
+    })();
+    localAILoadPromise = Promise.race([loading, timeout]).catch(err => {
+      localAILoadPromise = null; // allow retry next time
+      throw err;
+    });
+  }
+  return localAILoadPromise;
+}
+
+async function localAIPolish(promptText, onProgress){
+  const pipe = await ensureLocalAI(onProgress);
+  const output = await pipe(promptText, { max_new_tokens: 60 });
+  const text = Array.isArray(output) ? (output[0] && output[0].generated_text) : output;
+  return (text || '').trim();
+}
 
 const PY_TRACER_WRAPPER = `
 import sys, json, linecache, traceback
@@ -891,7 +944,7 @@ function buildStoryFromTrace(trace, stdout, profile){
     else explanation = `This line runs as part of the program: ${label}`;
     steps.push({ step_name: label.length > 42 ? label.slice(0, 39) + '...' : label, explanation, pointers: varsText, memory_picture: varsText || '(no tracked variables at this point)' });
   });
-  const limited = steps.slice(0, 8);
+  const limited = steps.slice(0, 50);
   const end_state = {
     explanation: stdout.length ? `The program finished and printed: ${stdout.join(' | ')}` : 'The program finished running without printing anything.',
     pointers: '',
@@ -1008,6 +1061,26 @@ async function explainCode(){
     renderFlowchartAI(flowData, storyData.title, 'trace');
     renderUsed(storyData, analysis, 'trace');
     submitBtn.disabled = false;
+
+    const useLocalAI = document.getElementById('use-local-ai').checked;
+    if (useLocalAI){
+      const conceptList = analysis.concepts.slice(0, 6).join(', ');
+      const prompt = `Rewrite this as one friendly, simple sentence with an analogy, explaining what this code does: it is a ${storyData.algorithm_type} algorithm using ${conceptList}, and it finished with: ${traceOutcome.result.stdout.join(' ')}`;
+      storyContent.querySelector('.card')?.insertAdjacentHTML('afterbegin', `<div class="state-msg" id="local-ai-status" style="padding:10px;font-size:13px;">🧠 Downloading/running the local AI model to polish the wording...</div>`);
+      try {
+        const polished = await localAIPolish(prompt);
+        const statusEl = document.getElementById('local-ai-status');
+        if (statusEl) statusEl.remove();
+        if (polished){
+          storyData.analogy = polished;
+          renderStory(storyData, 'trace-ai');
+        }
+      } catch (e){
+        const statusEl = document.getElementById('local-ai-status');
+        if (statusEl) statusEl.innerHTML = `<span class="hint">🧠 Local AI polish unavailable here (${escapeHtml(String(e && e.message || e))}) — showing the accurate built-in wording instead.</span>`;
+        setTimeout(() => { const s = document.getElementById('local-ai-status'); if (s) s.remove(); }, 5000);
+      }
+    }
     return;
   }
 
