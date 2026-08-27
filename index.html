@@ -329,6 +329,7 @@ function renderStory(data, source){
       <p class="analogy">💡 ${escapeHtml(data.analogy || '')}</p>
       ${data.algorithm_type ? `<div class="algo-badge">🧩 ${escapeHtml(data.algorithm_type)}</div>` : ''}
       ${stepsHtml}${endHtml}
+      ${data.truncation_note ? `<div class="flow-note">💡 ${escapeHtml(data.truncation_note)}</div>` : ''}
     </div>
     <button class="new-btn" id="back-btn">✏️ Try another snippet</button>
   `;
@@ -580,11 +581,34 @@ function ensureLocalAI(onProgress){
   return localAILoadPromise;
 }
 
+function looksDegenerate(text){
+  if (!text || text.length < 8) return true;
+  // Reject output that repeats the same long phrase (a common small-model failure mode).
+  const sentences = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  const seen = new Set();
+  for (const s of sentences){
+    const key = s.toLowerCase();
+    if (key.length > 15 && seen.has(key)) return true;
+    seen.add(key);
+  }
+  // Reject output that ends mid-word with no terminal punctuation (truncated garbage).
+  if (!/[.!?]$/.test(text.trim()) && text.length > 40) return true;
+  return false;
+}
+
 async function localAIPolish(promptText, onProgress){
   const pipe = await ensureLocalAI(onProgress);
-  const output = await pipe(promptText, { max_new_tokens: 60 });
+  const output = await pipe(promptText, {
+    max_new_tokens: 50,
+    repetition_penalty: 1.4,
+    no_repeat_ngram_size: 3
+  });
   const text = Array.isArray(output) ? (output[0] && output[0].generated_text) : output;
-  return (text || '').trim();
+  const clean = (text || '').trim();
+  if (looksDegenerate(clean)){
+    throw new Error('Local model produced repetitive/incomplete text — keeping the accurate built-in wording instead.');
+  }
+  return clean;
 }
 
 const PY_TRACER_WRAPPER = `
@@ -978,22 +1002,33 @@ function buildStoryFromTrace(trace, stdout, profile){
 
     steps.push({ step_name: label.length > 42 ? label.slice(0, 39) + '...' : label, explanation, pointers: varsText, memory_picture: varsText || '(no tracked variables at this point)' });
   });
-  const limited = steps.slice(0, 8);
+
+  const CAP = 18;
+  let limited = steps;
+  let truncationNote = null;
+  if (steps.length > CAP){
+    // Sample evenly across the WHOLE program (not just the first CAP) so later sections
+    // (e.g. a delete/search method that runs after several inserts) are never silently dropped.
+    const pickedIdx = [...new Set(Array.from({ length: CAP }, (_, i) => Math.round(i * (steps.length - 1) / (CAP - 1))))];
+    limited = pickedIdx.map(i => steps[i]);
+    truncationNote = `Showing ${limited.length} of ${steps.length} distinct lines, sampled across the entire run so both early and later parts of the program (e.g. setup and cleanup/deletion) are represented — not just the first lines.`;
+  }
+
   const end_state = {
     explanation: stdout.length ? `The program finished and printed: ${stdout.join(' | ')}` : 'The program finished running without printing anything.',
     pointers: '',
     memory_picture: stdout.join('\n')
   };
-  return { title: profile.title, analogy: profile.analogy, algorithm_type: profile.algorithm_type, steps: limited, end_state, real_world_uses: profile.real_world_uses };
+  return { title: profile.title, analogy: profile.analogy, algorithm_type: profile.algorithm_type, steps: limited, end_state, real_world_uses: profile.real_world_uses, truncation_note: truncationNote };
 }
 
 function buildFlowFromTrace(trace){
   const idByLabel = new Map();
   const nodes = [];
   const edges = [];
-  const exampleTrace = [];
   let prevId = null;
   let counter = 0;
+  const fullExample = [];
   trace.forEach(t => {
     const kind = classifyLine(t.src);
     if (kind === 'skip') return;
@@ -1009,11 +1044,16 @@ function buildFlowFromTrace(trace){
       edges.push({ from: prevId, to: id, label: '' });
     }
     prevId = id;
-    if (exampleTrace.length < 10){
-      const varsText = Object.entries(t.vars || {}).map(([k, v]) => `${k}=${v}`).join(', ');
-      exampleTrace.push({ node_id: id, values: varsText });
-    }
+    const varsText = Object.entries(t.vars || {}).map(([k, v]) => `${k}=${v}`).join(', ');
+    fullExample.push({ node_id: id, values: varsText });
   });
+
+  const TRACE_CAP = 16;
+  let exampleTrace = fullExample;
+  if (fullExample.length > TRACE_CAP){
+    const pickedIdx = [...new Set(Array.from({ length: TRACE_CAP }, (_, i) => Math.round(i * (fullExample.length - 1) / (TRACE_CAP - 1))))];
+    exampleTrace = pickedIdx.map(i => fullExample[i]);
+  }
   return { input_example: '', nodes, edges, trace: exampleTrace };
 }
 
