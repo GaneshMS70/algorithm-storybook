@@ -926,9 +926,26 @@ function guessProfile(analysis, code){
   return { title, analogy, algorithm_type, real_world_uses };
 }
 
+const KEY_TRICKS = [
+  { test: (p, l) => /Hash Set/.test(p.algorithm_type) && /^(if|elif|while)\b/.test(l) && /\bin\s+\w+/.test(l),
+    note: '💡 This is the key trick of the whole algorithm: checking membership in a set is O(1) on average (hashing), which is why this beats comparing every pair of items (which would be O(n²)).' },
+  { test: (p, l) => /Hash Map/.test(p.algorithm_type) && (/\[[^\]]+\]/.test(l) || /\.get\(/.test(l)),
+    note: '💡 This is the key trick: a dictionary lookup is O(1) on average, so the program never has to scan the whole collection to find a value.' },
+  { test: (p, l) => /Linked List/.test(p.algorithm_type) && /\.next/.test(l),
+    note: '💡 This is the core move of linked-list algorithms: rewiring a .next pointer is O(1), unlike shifting elements in an array.' },
+  { test: (p, l, kind) => /Recursive/.test(p.algorithm_type) && kind === 'decision',
+    note: '💡 This is the base case — the condition that stops the recursion. Without a reachable base case, this would recurse forever and crash with a stack overflow.' },
+  { test: (p, l) => /sort/i.test(l) && (/\.sort\(/.test(l) || /sorted\(/.test(l)),
+    note: '💡 Sorting first is a common trade-off: it costs O(n log n) up front, but can turn an O(n²) search into something much cheaper afterward.' }
+];
+
 function buildStoryFromTrace(trace, stdout, profile){
   const seenLines = new Set();
+  const counts = {};
+  trace.forEach(t => { const key = t.line + '|' + t.src; counts[key] = (counts[key] || 0) + 1; });
+
   const steps = [];
+  let keyTrickUsed = false;
   trace.forEach(t => {
     const key = t.line + '|' + t.src;
     if (seenLines.has(key)) return;
@@ -936,15 +953,32 @@ function buildStoryFromTrace(trace, stdout, profile){
     const kind = classifyLine(t.src);
     if (kind === 'skip') return;
     const label = t.src.trim();
+    const repeatCount = counts[key];
     const varsText = Object.entries(t.vars || {}).map(([k, v]) => `${k}=${v}`).join(' | ');
+
     let explanation;
-    if (kind === 'decision') explanation = `The program checks a condition here: ${label} — this decides which path runs next, and gets re-checked every time a loop comes back around.`;
-    else if (kind === 'io') explanation = `This is where the program produces visible output: ${label}`;
-    else if (kind === 'return') explanation = `The function hands back its answer here: ${label}`;
-    else explanation = `This line runs as part of the program: ${label}`;
+    if (kind === 'decision'){
+      explanation = repeatCount > 1
+        ? `The program checks a condition here: ${label} — this ran ${repeatCount} times over the whole execution, once per loop pass, and it's the point where the algorithm decides whether to keep going or take a different path.`
+        : `The program checks a condition here: ${label} — this decides which path runs next.`;
+    } else if (kind === 'io'){
+      explanation = `This is where the program produces visible output: ${label}`;
+    } else if (kind === 'return'){
+      explanation = `The function hands back its answer here: ${label}`;
+    } else {
+      explanation = repeatCount > 1
+        ? `This line ran ${repeatCount} times, once per iteration: ${label}`
+        : `This line runs as part of the program: ${label}`;
+    }
+
+    if (!keyTrickUsed){
+      const trick = KEY_TRICKS.find(k => k.test(profile, label, kind));
+      if (trick){ explanation += ' ' + trick.note; keyTrickUsed = true; }
+    }
+
     steps.push({ step_name: label.length > 42 ? label.slice(0, 39) + '...' : label, explanation, pointers: varsText, memory_picture: varsText || '(no tracked variables at this point)' });
   });
-  const limited = steps.slice(0, 50);
+  const limited = steps.slice(0, 8);
   const end_state = {
     explanation: stdout.length ? `The program finished and printed: ${stdout.join(' | ')}` : 'The program finished running without printing anything.',
     pointers: '',
